@@ -1,1 +1,6 @@
 ./dataset
+*.pyc
+*.pt
+*.pkl
+/runs
+/experiments
