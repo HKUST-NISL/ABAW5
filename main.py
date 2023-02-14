@@ -17,7 +17,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from model import MInterface
+from models import MInterface
 from data import DInterface
 from utils import load_model_path_by_args
 
