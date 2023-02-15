@@ -1,6 +1,6 @@
 import cv2
 import os
-from extraxt_utils import face_alignment, convert_directory_to_image_file, delete_folder
+from extract_utils import face_alignment, convert_directory_to_image_file, delete_folder
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
