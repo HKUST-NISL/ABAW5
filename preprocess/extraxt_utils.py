@@ -23,8 +23,8 @@ def crop_images(dataset_folder_path='./dataset/val/',
         # 256*256, npy, h5,
         subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-nomask"])
 
-def face_alignment(fe_path, dataset_rawpic, dir_crop_sub):
-    subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-nomask"])
+def face_alignment(fe_path, dataset_rawpic, dir_crop_sub, faceSize=224):
+    subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-simsize", str(faceSize), "-nomask"])
     subprocess.run(["rm", "-rf", dataset_rawpic])
 
 def convert_directory_to_image_file(folder_path='dataset/val/aligned/19874/', filename='19874'):
