@@ -47,7 +47,7 @@ class ERI(LightningModule):
 
     def test_step(self, batch, batch_idx):
         pass
-    
+
 
 if __name__ == '__main__':
 
