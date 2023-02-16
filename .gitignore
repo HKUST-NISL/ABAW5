@@ -6,3 +6,4 @@
 /experiments
 .DS_Store
 .idea/*
+lightning_logs/*

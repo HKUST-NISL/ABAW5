@@ -31,7 +31,7 @@ def convert_directory_to_image_file(folder_path='dataset/val/aligned/19874/', fi
     aligned_dir = folder_path + filename + '_aligned/'
     images=[]
     for dir_sub_vid_img in natsort.natsorted(glob.glob(aligned_dir + "frame*.bmp")):
-        images.append(cv2.imread(dir_sub_vid_img, 0))
+        images.append(cv2.imread(dir_sub_vid_img, 1))
     images = np.stack(images)
     subprocess.run(["rm", "-rf", folder_path])
     return images
@@ -42,4 +42,4 @@ def delete_folder(folder_path):
 if __name__ == '__main__':
     #fe_path: path to installed openFace feature extraction
     #crop_images(dataset_folder_path='./dataset/val/', fe_path='')
-    convert_directory_to_image_file()
+    convert_directory_to_image_file('dataset/aligned/02127/', '02127')

@@ -1,25 +1,10 @@
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0
-# 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import os
 import pytorch_lightning as pl
 from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
-
-from models import MInterface
-from data import DInterface
-from utils import load_model_path_by_args
+from trainers.eri import ERI
+from dataloaders.dataloader_abaw import ABAWDataModule
 
 
 def load_callbacks():
@@ -47,22 +32,37 @@ def load_callbacks():
 
 def main(args):
     pl.seed_everything(args.seed)
-    load_path = load_model_path_by_args(args)
-    data_module = DInterface(**vars(args))
 
-    if load_path is None:
-        model = MInterface(**vars(args))
+    if args.trainer_name == 'eri':
+        model = ERI(args)
+        data_module = ABAWDataModule(args)
     else:
-        model = MInterface(**vars(args))
-        args.ckpt_path = load_path
+        print('Invalid model')
+    if args.checkpoint == 'None':
+        args.checkpoint = None
 
-    # # If you want to change the logger's saving folder
-    # logger = TensorBoardLogger(save_dir='kfold_log', name=args.log_dir)
-    # args.callbacks = load_callbacks()
-    # args.logger = logger
+    logger = TensorBoardLogger(save_dir=args.log_dir, name=args.log_name)
 
-    trainer = Trainer.from_argparse_args(args)
-    trainer.fit(model, data_module)
+    trainer = Trainer(deterministic=True,
+                      num_sanity_val_steps=10,
+                      resume_from_checkpoint=args.checkpoint,
+                      logger=logger,
+                      gpus=args.gpus,
+                      gradient_clip_val=args.clip_val,
+                      max_epochs=args.num_epochs,
+                      limit_val_batches=args.limit_val_batches,
+                      val_check_interval=args.val_check_interval,
+                      accumulate_grad_batches=args.grad_accumulate,
+                      fast_dev_run=False,
+                      enable_checkpointing=True,
+                      callbacks=load_callbacks())
+
+    if args.train == 'True':
+        trainer.fit(model, data_module.train_loader, data_module.val_loader)
+        trainer.test(model=model, dataloaders=data_module.test_loader)
+    else:
+        model = model.load_from_checkpoint(args.checkpoint, args=args)
+        trainer.test(model=model, dataloaders=data_module.test_loader)
 
 
 if __name__ == '__main__':
@@ -72,6 +72,12 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', default=8, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
+    parser.add_argument('-gpus', default='0', type=str)
+
+    parser.add_argument('-grad_accumulate', type=int, default=1)
+    parser.add_argument('-clip_val', default=1.0, type=float)
+    parser.add_argument('-limit_val_batches', default=1.0, type=float)
+    parser.add_argument('-val_check_interval', default=1.0, type=float)
 
     # LR Scheduler
     parser.add_argument('--lr_scheduler', choices=['step', 'cosine'], type=str)
@@ -80,43 +86,24 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
 
     # Restart Control
-    parser.add_argument('--load_best', action='store_true')
-    parser.add_argument('--load_dir', default=None, type=str)
-    parser.add_argument('--load_ver', default=None, type=str)
-    parser.add_argument('--load_v_num', default=None, type=int)
+    parser.add_argument('--checkpoint', default='None', type=str)
 
     # Training Info
-    parser.add_argument('--dataset', default='standard_data', type=str)
-    parser.add_argument('--data_dir', default='ref/data', type=str)
-    parser.add_argument('--model_name', default='standard_net', type=str)
+    parser.add_argument('--train', default='True', type=str)
+    parser.add_argument('--dataset_folder_path', default='./dataset/', type=str)
+    parser.add_argument('--input_image_size', default=299, type=int)
+
+    parser.add_argument('--trainer_name', default='eri', type=str)
+    parser.add_argument('--model_name', default='SMMNet', type=str)
     parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)
     parser.add_argument('--no_augment', action='store_true')
     parser.add_argument('--log_dir', default='lightning_logs', type=str)
-    
+    parser.add_argument('--log_name', default='eri', type=str)
+    parser.add_argument('-num_epochs', type=int, default=10)
+
     # Model Hyperparameters
-    parser.add_argument('--hid', default=64, type=int)
-    parser.add_argument('--block_num', default=8, type=int)
-    parser.add_argument('--in_channel', default=3, type=int)
-    parser.add_argument('--layer_num', default=5, type=int)
-
-    # Other
-    parser.add_argument('--aug_prob', default=0.5, type=float)
-
-    # Add pytorch lightning's args to parser as a group.
-    parser = Trainer.add_argparse_args(parser)
-
-    ## Deprecated, old version
-    # parser = Trainer.add_argparse_args(
-    #     parser.add_argument_group(title="pl.Trainer args"))
-
-    # Reset Some Default Trainer Arguments' Default Values
-    parser.set_defaults(max_epochs=100)
+    # TODO: add
 
     args = parser.parse_args()
-
-    # List Arguments
-    args.mean_sen = [0.485, 0.456, 0.406]
-    args.std_sen = [0.229, 0.224, 0.225]
-
     main(args)

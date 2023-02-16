@@ -12,7 +12,6 @@ from torch import Tensor
 # from pytorch_metric_learning import losses, miners, distances, reducers
 import torchmetrics
 import math
-from sklearn.metrics import f1_score
 import numpy as np
 from torch.nn import TransformerEncoderLayer
 from typing import Optional, Any

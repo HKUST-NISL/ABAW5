@@ -110,21 +110,24 @@ class Collator(object):
         '''
         Select a specfic number of images randomly for the time being
         :param data:
-        :return: batch {'images': imgRandomLen, 299, 299; 'intensity': 2, 7; 'age': 2; 'country': 2}
+        :return: batch_x {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
+        batch_y np.array: bs, 7;
         '''
-        batch = {}
+        batch_x = {}
         images = [x['images'] for x in data]
         final_images = []
         for images_element in images:
-            random_indexes = random.sample(np.arange(images_element.shape[0]).tolist(), self.imgRandomLen)
-            random_indexes.sort()
-            random_images = images_element[random_indexes]
+            #random_indexes = random.sample(np.arange(images_element.shape[0]).tolist(), self.imgRandomLen)
+            #random_indexes.sort()
+            random_indexes = random.randint(0, images_element.shape[0]-self.imgRandomLen)
+            random_images = images_element[random_indexes:(random_indexes+self.imgRandomLen)]
             final_images.append(random_images)
-        batch['images'] = np.stack(final_images)
-        batch['intensity'] = np.stack([x['intensity'] for x in data])
-        batch['age'] = np.stack([x['age'] for x in data])
-        batch['country'] = np.stack([x['country'] for x in data])
-        return batch
+        batch_x['images'] = np.stack(final_images)
+        batch_x['age'] = np.stack([x['age'] for x in data])
+        batch_x['country'] = np.stack([x['country'] for x in data])
+        # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
+        batch_y = np.stack([x['intensity'] for x in data])
+        return batch_x, batch_y
 
 if __name__ == '__main__':
     class ARGS(object):

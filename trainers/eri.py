@@ -12,37 +12,39 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
 from torchmetrics import Accuracy
 from torchvision import transforms
-import models
-
-
+from models.smm_net import SMMNet
 
 
 class ERI(LightningModule):
-    def __init__(self, **args):
+    def __init__(self, args):
         super().__init__()
-
-        self.model = getattr(models, args['model_name'])()
-        self.lr = args['lr']
+        self.model = SMMNet() #TODO #getattr(models, args['model_name'])()
+        self.lr = args.lr
     
-    def forward(self, x):
-        return self.model(x)
+    '''def forward(self, x):
+        return self.model(x)''' #not used
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr)
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150], gamma=0.1)
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150], gamma=0.1) #TODO: should be in args
         return [optimizer], [lr_scheduler]
     
     def _calculate_loss(self, batch, mode="train"):
         imgs, labels = batch
+        # TODO: process the input batch
+        # size: batch[0]: {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
+        #         batch[1]: np.array: bs, 7;
         preds = self.model(imgs)
         loss = F.mse_loss(preds, labels)
         return loss
 
     def training_step(self, batch, batch_idx):
+        # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         loss = self._calculate_loss(batch, mode="train")
         return loss
 
     def validation_step(self, batch, batch_idx):
+        # TODO: add logging, also add validation_epoch_end
         self._calculate_loss(batch, mode="val")
 
     def test_step(self, batch, batch_idx):
