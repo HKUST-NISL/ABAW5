@@ -24,7 +24,8 @@ def crop_images(dataset_folder_path='./dataset/val/',
         subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-nomask"])
 
 def face_alignment(fe_path, dataset_rawpic, dir_crop_sub, faceSize=224):
-    subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-simsize", str(faceSize), "-nomask"])
+    subprocess.run([fe_path, "-fdir", dataset_rawpic, "-out_dir", dir_crop_sub, "-simsize", str(faceSize),
+                    "-format_aligned", 'jpg', "-2Dfp", "-nomask"])
     subprocess.run(["rm", "-rf", dataset_rawpic])
 
 def convert_directory_to_image_file(folder_path='dataset/val/aligned/19874/', filename='19874'):
@@ -33,7 +34,7 @@ def convert_directory_to_image_file(folder_path='dataset/val/aligned/19874/', fi
     for dir_sub_vid_img in natsort.natsorted(glob.glob(aligned_dir + "frame*.bmp")):
         images.append(cv2.imread(dir_sub_vid_img, 1))
     images = np.stack(images)
-    subprocess.run(["rm", "-rf", folder_path])
+    #subprocess.run(["rm", "-rf", folder_path])
     return images
 
 def delete_folder(folder_path):

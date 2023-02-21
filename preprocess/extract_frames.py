@@ -48,15 +48,16 @@ def extract_frames(dataset_folder_path='dataset/train/',
             #video_dir = dataset_folder_path+'mp4/'+filename
             face_alignment(fe_path, saving_dir, dest_dir)
             # read and save aligned faces, delete aligned directory
-            images = convert_directory_to_image_file(dest_dir+'/', filename[:-4])
-
-            np.save(final_saving_dir+filename[:-4], images)
+            #images = convert_directory_to_image_file(dest_dir+'/', filename[:-4])
+            #np.save(final_saving_dir+filename[:-4], images)
         else:
             continue
     # delete align path and image path
-    delete_folder(aligned_path)
-    delete_folder(dataset_folder_path + 'images')
+    #delete_folder(aligned_path)
+    #delete_folder(dataset_folder_path + 'images')
 
 if __name__ == "__main__":
     extract_frames(dataset_folder_path='./dataset/train/')
     extract_frames(dataset_folder_path='./dataset/val/')
+    # /home/yini/OpenFace/build/bin/FeatureExtraction
+    # /data/abaw5/val/
