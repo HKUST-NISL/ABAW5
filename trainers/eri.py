@@ -12,17 +12,20 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
 from torchmetrics import Accuracy
 from torchvision import transforms
-from models.smm_net import SMMNet
+import models
 
 
 class ERI(LightningModule):
-    def __init__(self, args):
+    def __init__(self, **args):
         super().__init__()
-        self.model = SMMNet() #TODO #getattr(models, args['model_name'])()
-        self.lr = args.lr
+        
+        self.lr = args['lr']
+
+        self.model = getattr(models, args['model_name'])()
+        self.head = nn.Linear(self.model.out_c, 8, bias=False)
     
-    '''def forward(self, x):
-        return self.model(x)''' #not used
+    def forward(self, x):
+        return torch.sigmoid(self.head(self.model(x)))
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr)
@@ -57,4 +60,4 @@ if __name__ == '__main__':
 
     x = torch.rand(4, 3, 256, 256)
     y = model(x)
-    print(y.shape)
+    print(y)

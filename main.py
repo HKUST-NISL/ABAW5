@@ -35,7 +35,7 @@ def main(args):
 
     if args.trainer_name == 'eri':
         model = ERI(args)
-        data_module = ABAWDataModule(args)
+        data_module = ABAWDataModule(**vars(args))
     else:
         print('Invalid model')
     if args.checkpoint == 'None':

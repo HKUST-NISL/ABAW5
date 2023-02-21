@@ -8,13 +8,13 @@ from PIL import Image
 
 
 class ABAWDataset(Dataset):
-    def __init__(self, args, trainIndex):
+    def __init__(self, trainIndex, **args):
         '''
         :param args: contains dataset_folder_path
         :param trainIndex: 0=train, 1=val, 2=test
         :returns country is 0 if US, 1 if SA
         '''
-        dataset_folder_path = args.dataset_folder_path
+        dataset_folder_path = args['dataset_folder_path']
         indexList = ['train', 'val', 'test']
         data_path = dataset_folder_path + indexList[trainIndex] + '/processed/'
 
@@ -22,7 +22,7 @@ class ABAWDataset(Dataset):
         df = pd.read_csv(data_info_path)
         self.total_data = []
 
-        input_image_size = args.input_image_size
+        input_image_size = args['input_image_size']
 
         for data_file in glob.glob(data_path + '/*.npy'):
             file_name = data_file.split('/')[-1][:-4]
@@ -69,20 +69,20 @@ class ABAWDataset(Dataset):
 
 
 class ABAWDataModule(pl.LightningDataModule):
-    def __init__(self, args):
+    def __init__(self, **args):
         super().__init__()
-        train_set = ABAWDataset(args, 0)
-        val_set = ABAWDataset(args, 1)
-        test_set = ABAWDataset(args, 1)
+        train_set = ABAWDataset(0, **args)
+        val_set = ABAWDataset(1, **args)
+        test_set = ABAWDataset(1, **args)
         collate_fn = Collator()
 
         self.train_loader = DataLoader(dataset=train_set,
-                                       batch_size=args.batch_size,
+                                       batch_size=args['batch_size'],
                                        num_workers=2,
                                        collate_fn=collate_fn,
                                        shuffle=True)
         self.val_loader = DataLoader(dataset=val_set,
-                                     batch_size=args.batch_size,
+                                     batch_size=args['batch_size'],
                                      num_workers=2,
                                      collate_fn=collate_fn,
                                      shuffle=False)
@@ -132,18 +132,31 @@ class Collator(object):
 
 
 if __name__ == '__main__':
-    class ARGS(object):
-        def __init__(self):
-            self.dataset_folder_path = './dataset/'
-            self.input_image_size = 299
-    args = ARGS()
-    abaw = ABAWDataset(args, 0)
-    collate_fn = Collator()
-    train_loader = DataLoader(dataset=abaw,
-                              batch_size=2,
-                              num_workers=0,
-                              collate_fn=collate_fn,
-                              shuffle=True)
-    for batch in train_loader:
-        print(batch)
+    # class ARGS(object):
+    #     def __init__(self):
+    #         self.dataset_folder_path = './dataset/abaw5/'
+    #         self.input_image_size = 299
+    # args = ARGS()
+    # abaw = ABAWDataset(args, 0)
+    # collate_fn = Collator()
+    # train_loader = DataLoader(dataset=abaw,
+    #                           batch_size=2,
+    #                           num_workers=0,
+    #                           collate_fn=collate_fn,
+    #                           shuffle=True)
+    # for batch in train_loader:
+    #     print(batch)
+
+
+    dataset = ABAWDataModule(dataset_folder_path="./dataset/abaw5/",
+                             batch_size=4, 
+                             input_image_size=299,
+                             )
+    print('train')
+    print(len(dataset.train_dataloader))
+    print('val')
+    print(len(dataset.val_dataloader))
+    print('test')
+    print(len(dataset.test_dataloader))
+
 
