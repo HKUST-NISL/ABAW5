@@ -6,6 +6,7 @@ import glob
 import random
 from PIL import Image
 
+
 class ABAWDataset(Dataset):
     def __init__(self, args, trainIndex):
         '''
@@ -128,6 +129,7 @@ class Collator(object):
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = np.stack([x['intensity'] for x in data])
         return batch_x, batch_y
+
 
 if __name__ == '__main__':
     class ARGS(object):
