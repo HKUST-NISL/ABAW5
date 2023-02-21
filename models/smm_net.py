@@ -1,4 +1,3 @@
-
 import torch
 import torchvision
 import torch.nn as nn
@@ -129,7 +128,10 @@ class SMMNet(nn.Module):
         self.n_heads = 8
         self.va_dim = 1
         self.tasks = ['AU', 'EXPR', 'VA']
-        self.avg_features = True
+        self.avg_features = False
+        # self.avg_features = True
+
+        self.out_c = 16 if self.avg_features else 272
         self.backbone_CNN = get_backbone_from_name("inception_v3", pretrained=True, remove_classifier=True)
         self.features_dim = self.backbone_CNN.features_dim
         self.configure_architecture()
@@ -223,81 +225,14 @@ class SMMNet(nn.Module):
             projected = self.transformation_matrices[i_au](au_metric)
             EXPR_VA_metrics.append(projected)
         EXPR_VA_metrics = torch.stack(EXPR_VA_metrics, dim=1) # bs, numeber of regions, dim
-        if not self.avg_features:
-            bs, length = EXPR_VA_metrics.size(0), EXPR_VA_metrics.size(1)
-            # EXPR classifier
-            i_classifier = self.tasks.index('EXPR')
-            outputs['EXPR'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics.view((bs*length, -1))).view((bs, length, -1))
-            metrics['EXPR'] = EXPR_VA_metrics
 
-            # VA classifier
-            i_classifier = self.tasks.index('VA')
-            outputs['VA'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics.view((bs*length, -1))).view((bs, length, -1))
-            metrics['VA'] = EXPR_VA_metrics
-        else:
+        if self.avg_features:
             EXPR_VA_metrics = EXPR_VA_metrics.mean(1)
-            # EXPR classifier
-            i_classifier = self.tasks.index('EXPR')
-            outputs['EXPR'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics)
-            metrics['EXPR'] = EXPR_VA_metrics
 
-            # VA classifier
-            i_classifier = self.tasks.index('VA')
-            outputs['VA'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics)
-            metrics['VA'] = EXPR_VA_metrics 
-        return outputs, metrics
-
-    def training_step(self, batch, batch_idx):
-        # import pdb; pdb.set_trace()
-        (x_au, y_au), (x_expr, y_expr), (x_va, y_va) = batch['single'] 
-        if 'multiple' in batch.keys():
-            (x_au_va, y_au_va), (x_au_expr_va, y_au_expr_va) = batch['multiple']
-            preds_au_va, metrics_au_va  = self(x_au_va)
-            preds_au_expr_va, metrics_au_expr_va = self(x_au_expr_va)
-        total_loss = 0  # accumulated loss for emotional tasks
         
-        for task in self.tasks:
-            if task =='AU':
-                preds, metrics  = self(x_au)
-                preds_task = preds[task] if 'multiple' not in batch.keys() else torch.cat([preds[task], preds_au_va[task]], dim=0)
-                labels_task = y_au if 'multiple' not in batch.keys() else torch.cat([y_au, self.parse_multiple_labels(y_au_va, AU=True, VA=True)[0]], dim=0)
-                metrics_task = metrics[task] if 'multiple' not in batch.keys() else torch.cat([metrics[task], metrics_au_va[task]], dim=0)
-            elif task =='EXPR':
-                preds, metrics  = self(x_expr)
-                preds_task = preds[task] if 'multiple' not in batch.keys() else torch.cat([preds[task], preds_au_expr_va[task]], dim=0)
-                labels_task = y_expr if 'multiple' not in batch.keys() else torch.cat([y_expr, self.parse_multiple_labels(y_au_expr_va, AU=True, EXPR=True, VA=True)[1]], dim=0)
-                metrics_task = metrics[task] if 'multiple' not in batch.keys() else torch.cat([metrics[task], metrics_au_expr_va[task]], dim=0)
-            elif task =='VA':
-                preds, metrics  = self(x_va)
-                preds_task = preds[task] if 'multiple' not in batch.keys() else torch.cat([preds[task], preds_au_va[task], preds_au_expr_va[task]], dim=0)
-                labels_task = y_va if 'multiple' not in batch.keys() else torch.cat([y_va, 
-                self.parse_multiple_labels(y_au_va, AU=True, VA=True)[-1] ,
-                self.parse_multiple_labels(y_au_expr_va, AU=True, EXPR=True, VA=True)[-1]], dim=0)
-                metrics_task = metrics[task] if 'multiple' not in batch.keys() else torch.cat([metrics[task], metrics_au_va[task], metrics_au_expr_va[task]], dim=0)
-            if task == 'AU':
-                loss = self.training_task(preds_task, labels_task, metrics_task, task)
-            else:
-                if not self.avg_features:
-                    loss = self.training_task(preds_task.mean(1), labels_task, metrics_task, task)
-                else:
-                    loss = self.training_task(preds_task, labels_task, metrics_task, task)
-            self.log('loss_{}'.format(task), loss, on_step=True, on_epoch=True, 
-                prog_bar=True, logger=True)
-            total_loss += loss
+        EXPR_VA_metrics = EXPR_VA_metrics.flatten(1)
+        return EXPR_VA_metrics
 
-        self.log('total_loss', total_loss, on_step=True, on_epoch=True, 
-            prog_bar=True, logger=True)
-        return total_loss
-
-    def validation_step(self, batch, batch_idx, dataloader_idx):
-        # the batch input: input_image, label
-        x, y = batch 
-        preds,_  = self(x) # the batch output: preds_dictionary, metrics
-        if not self.avg_features:
-            return torch.cat([preds['AU'], preds['EXPR'].mean(1), preds['VA'].mean(1)], dim=-1), y
-        else:
-            return torch.cat([preds['AU'], preds['EXPR'], preds['VA']], dim=-1), y
-        
 
 
 if __name__ == '__main__':
@@ -305,6 +240,5 @@ if __name__ == '__main__':
 
     x = torch.rand(4, 3, 256, 256)
 
-    output, metric = net(x)
-    for key in metric.keys():
-        print(metric[key].shape)
+    feats = net(x)
+    print(feats.shape)

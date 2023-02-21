@@ -9,12 +9,10 @@ class Res50(nn.Module):
         net = resnet50(pretrained=True)
         # need vggface2 pretrained model
         self.backbone = nn.Sequential(*list(net.children())[:-1])
-
-        self.head = nn.Linear(2048, 7)
+        self.out_c = 2048
 
     def forward(self, x):
-        x = self.backbone(x)
-        y = torch.sigmoid(self.head(x.flatten(1)))
+        y = self.backbone(x).flatten(1)
         return y
 
 
