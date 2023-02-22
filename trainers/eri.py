@@ -37,7 +37,7 @@ class ERI(LightningModule):
         # TODO: process the input batch
         # size: batch[0]: {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
         #         batch[1]: np.array: bs, 7;
-        preds = self.model(imgs)
+        preds = torch.sigmoid(self.head(self.model(batch)))
         loss = F.mse_loss(preds, labels)
         return loss
 
