@@ -18,13 +18,17 @@ def spotting(result, k, p):
     score_plot_agg = score_plot.copy()
     for x in range(len(score_plot[k:-k])):
         score_plot_agg[x + k] = score_plot[x:x + 2 * k].mean()
-    score_plot_agg = score_plot_agg[k:-k]
+    score_plot_agg = score_plot_agg[:-k]
     threshold = score_plot_agg.mean() + p * (
             max(score_plot_agg) - score_plot_agg.mean())  # Moilanen threshold technique
+    print('Threshold: ', threshold)
     peaks, _ = find_peaks(score_plot_agg[:, 0], height=threshold[0], distance=k)
-    # [peaks-k, peaks+k]
-    # TODO: map back
-    print(peaks)
+    print('Peaks:', peaks/30+k/30)
+    x = np.arange(score_plot_agg.shape[0]) / 30
+    plt.plot(x, score_plot_agg+k/30)
+    plt.xlabel('Sec')
+    plt.ylabel('MaE spotting score')
+    plt.show()
 
 
 def normalize(images):
@@ -100,11 +104,10 @@ def testing(model_path, data_path, save):
 
 def plot(path):
     k = 18
-    p = 0.1 # only 63/137
+    p = 0
     result = np.load(path)
     spotting(result, k, p)
-    plt.plot(result)
-    plt.show()
+
 
 
 if __name__ == '__main__':
@@ -114,4 +117,4 @@ if __name__ == '__main__':
     '''testing('dataset/optical_flow/s1.hdf5',
             'dataset/train/',
             save=True)'''
-    plot('dataset/val/optical_flow/25066.npy')
+    plot('dataset/train/optical_flow/02127.npy')
