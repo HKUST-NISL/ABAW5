@@ -60,7 +60,8 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = ERI(model_name="Res50", lr=1e-4, device=device)
 
-    x = torch.rand(4, 3, 256, 256)
+    x = {}
+    x['images'] = torch.rand(4, 3, 256, 256)
     y = torch.rand(4, 7)
     loss = model._calculate_loss((x, y))
     print(y)
