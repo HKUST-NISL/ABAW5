@@ -55,9 +55,9 @@ class ABAWDataset(IterableDataset):
     #    return self.total_data[index]
     def __iter__(self):
         for data_entry in self.total_data:
+            output = {}
             path = data_entry['videoPath']
             folder = path.split('/')[-1]
-            resized_images = []
             # get the indices
             filenames = natsort.natsorted(glob.glob(path + '/' + folder + '_aligned/frame*.jpg'))
             assert len(filenames) != 0
@@ -74,8 +74,12 @@ class ABAWDataset(IterableDataset):
                     image = cv2.resize(image, (self.input_image_size, self.input_image_size))
                     resized_images.append(image)
             resized_images = np.stack(resized_images)
-            data_entry['images'] = resized_images
-            yield data_entry
+            output['images'] = resized_images
+            output['intensity'] = data_entry['intensity']
+            output['age'] = data_entry['age']
+            output['country'] = data_entry['country']
+            del resized_images, image
+            yield output
 
     def __len__(self):
         return self.data_total_length
@@ -156,5 +160,6 @@ if __name__ == '__main__':
                              )
     for batch in tqdm(dataset.train_loader):
         image = batch[0]
+        del batch, image
 
 
