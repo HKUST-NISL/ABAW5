@@ -18,11 +18,11 @@ import models
 class ERI(LightningModule):
     def __init__(self, **args):
         super().__init__()
-        
+
         self.lr = args['lr']
 
         self.model = getattr(models, args['model_name'])()
-        self.head = nn.Linear(self.model.out_c, 8, bias=False)
+        self.head = nn.Linear(self.model.out_c, 7, bias=False)
     
     def forward(self, x):
         return torch.sigmoid(self.head(self.model(x)))
@@ -33,10 +33,10 @@ class ERI(LightningModule):
         return [optimizer], [lr_scheduler]
     
     def _calculate_loss(self, batch, mode="train"):
+        
         imgs, labels = batch
-        # TODO: process the input batch
-        # size: batch[0]: {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
-        #         batch[1]: np.array: bs, 7;
+        imgs = imgs.to(self.device)
+        labels = labels.to(self.device)
         preds = self(imgs)
         loss = F.mse_loss(preds, labels)
         return loss
@@ -44,6 +44,7 @@ class ERI(LightningModule):
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         loss = self._calculate_loss(batch, mode="train")
+        
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -56,8 +57,10 @@ class ERI(LightningModule):
 
 if __name__ == '__main__':
 
-    model = ERI(model_name="Res50", lr=1e-4)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = ERI(model_name="Res50", lr=1e-4, device=device)
 
     x = torch.rand(4, 3, 256, 256)
-    y = model(x)
+    y = torch.rand(4, 7)
+    loss = model._calculate_loss((x, y))
     print(y)
