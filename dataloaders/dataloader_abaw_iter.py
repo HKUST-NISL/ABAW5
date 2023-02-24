@@ -10,6 +10,7 @@ import cv2
 import natsort
 from tqdm import tqdm
 from sampling_strategy import SamplingStrategy
+import torch
 
 class ABAWDataset(IterableDataset):
     def __init__(self, trainIndex, **args):
@@ -74,10 +75,10 @@ class ABAWDataset(IterableDataset):
                     image = cv2.resize(image, (self.input_image_size, self.input_image_size))
                     resized_images.append(image)
             resized_images = np.stack(resized_images)
-            output['images'] = resized_images
-            output['intensity'] = data_entry['intensity']
-            output['age'] = data_entry['age']
-            output['country'] = data_entry['country']
+            output['images'] = torch.from_numpy(resized_images)
+            output['intensity'] = torch.from_numpy(data_entry['intensity'])
+            output['age'] = torch.from_numpy(data_entry['age'])
+            output['country'] = torch.from_numpy(data_entry['country'])
             del resized_images, image
             yield output
 
@@ -127,33 +128,33 @@ class Collator(object):
         '''
         Select a specific number of images randomly for the time being
         :param data:
-        :return: batch_x {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
-        batch_y np.array: bs, 7;
+        :return: batch_x torch.tensor{'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
+        batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        batch_x['images'] = np.stack([x['images'] for x in data])
-        batch_x['age'] = np.stack([x['age'] for x in data])
-        batch_x['country'] = np.stack([x['country'] for x in data])
+        batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['age'] = torch.stack([x['age'] for x in data])
+        batch_x['country'] = torch.stack([x['country'] for x in data])
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
-        batch_y = np.stack([x['intensity'] for x in data])
+        batch_y = torch.stack([x['intensity'] for x in data])
         return batch_x, batch_y
 
 
 if __name__ == '__main__':
-    # class ARGS(object):
-    #     def __init__(self):
-    #         self.dataset_folder_path = './dataset/abaw5/'
-    #         self.input_image_size = 299
-    # args = ARGS()
-    # abaw = ABAWDataset(args, 0)
-    # collate_fn = Collator()
-    # train_loader = DataLoader(dataset=abaw,
-    #                           batch_size=2,
-    #                           num_workers=0,
-    #                           collate_fn=collate_fn,
-    #                           shuffle=True)
-    # for batch in train_loader:
-    #     print(batch)
+    '''class ARGS(object):
+        def __init__(self):
+            self.dataset_folder_path = './dataset/abaw5/'
+            self.input_image_size = 299
+    args = ARGS()
+    abaw = ABAWDataset(0, args)
+    collate_fn = Collator()
+    train_loader = DataLoader(dataset=abaw,
+                              batch_size=2,
+                              num_workers=0,
+                              collate_fn=collate_fn,
+                              shuffle=True)
+    for batch in train_loader:
+        print(batch)'''
     dataset = ABAWDataModule(dataset_folder_path="./dataset/",
                              batch_size=4,
                              input_image_size=299,
