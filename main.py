@@ -34,10 +34,11 @@ def main(args):
     pl.seed_everything(args.seed)
 
     if args.trainer_name == 'eri':
-        model = ERI(args)
+        model = ERI(**vars(args))
         data_module = ABAWDataModule(**vars(args))
     else:
         print('Invalid model')
+    model = model.cuda()
     if args.checkpoint == 'None':
         args.checkpoint = None
 
@@ -90,7 +91,7 @@ if __name__ == '__main__':
 
     # Training Info
     parser.add_argument('--train', default='True', type=str)
-    parser.add_argument('--dataset_folder_path', default='./dataset/', type=str)
+    parser.add_argument('--dataset_folder_path', default='./dataset/abaw5', type=str)
     parser.add_argument('--input_image_size', default=299, type=int)
 
     parser.add_argument('--trainer_name', default='eri', type=str)

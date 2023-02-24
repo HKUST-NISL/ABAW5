@@ -35,7 +35,7 @@ class ERI(LightningModule):
     def _calculate_loss(self, batch, mode="train"):
         
         data, labels = batch
-        imgs = data['images'].to(self.device)
+        imgs = data['images'].to(self.device).squeeze(1)
         labels = labels.to(self.device)
         preds = self(imgs)
         loss = F.mse_loss(preds, labels)
@@ -57,8 +57,8 @@ class ERI(LightningModule):
 
 if __name__ == '__main__':
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = ERI(model_name="Res50", lr=1e-4, device=device)
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = ERI(model_name="Res50", lr=1e-4).cuda()
 
     x = {}
     x['images'] = torch.rand(4, 3, 256, 256)

@@ -9,8 +9,9 @@ from PIL import Image
 import cv2
 import natsort
 from tqdm import tqdm
-from sampling_strategy import SamplingStrategy
+from dataloaders.sampling_strategy import SamplingStrategy
 import torch
+import os
 
 class ABAWDataset(IterableDataset):
     def __init__(self, trainIndex, **args):
@@ -23,9 +24,9 @@ class ABAWDataset(IterableDataset):
         self.sampling = SamplingStrategy()
         dataset_folder_path = args['dataset_folder_path']
         indexList = ['train', 'val', 'test']
-        data_path = dataset_folder_path + indexList[trainIndex] + '/aligned/'
+        data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
 
-        data_info_path = dataset_folder_path + 'data_info.csv'
+        data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
         self.total_data = []
 
@@ -69,14 +70,13 @@ class ABAWDataset(IterableDataset):
             for data_file in random_images:
                 image = cv2.imread(data_file)
                 height = image.shape[0]
-                if height == self.input_image_size:
-                    resized_images.append(image)
-                else:
+                if height != self.input_image_size:
                     image = cv2.resize(image, (self.input_image_size, self.input_image_size))
-                    resized_images.append(image)
+                
+                resized_images.append(image.transpose(2, 0, 1))
             resized_images = np.stack(resized_images)
-            output['images'] = torch.from_numpy(resized_images)
-            output['intensity'] = torch.from_numpy(data_entry['intensity'])
+            output['images'] = (torch.from_numpy(resized_images.astype(np.float32)) - 128 )/ 255
+            output['intensity'] = torch.from_numpy(data_entry['intensity']).float()
             output['age'] = torch.from_numpy(data_entry['age'])
             output['country'] = torch.from_numpy(data_entry['country'])
             del resized_images, image
