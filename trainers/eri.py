@@ -34,8 +34,8 @@ class ERI(LightningModule):
     
     def _calculate_loss(self, batch, mode="train"):
         
-        imgs, labels = batch
-        imgs = imgs.to(self.device)
+        data, labels = batch
+        imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
         loss = F.mse_loss(preds, labels)
