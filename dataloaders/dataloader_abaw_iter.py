@@ -9,6 +9,7 @@ from PIL import Image
 import cv2
 import natsort
 from tqdm import tqdm
+from sampling_strategy import SamplingStrategy
 
 class ABAWDataset(IterableDataset):
     def __init__(self, trainIndex, **args):
@@ -17,7 +18,8 @@ class ABAWDataset(IterableDataset):
         :param trainIndex: 0=train, 1=val, 2=test
         :returns country is 0 if US, 1 if SA
         '''
-        self.imgRandomLen = 10 #for the time being
+        #self.imgRandomLen = 10 #for the time being
+        self.sampling = SamplingStrategy()
         dataset_folder_path = args['dataset_folder_path']
         indexList = ['train', 'val', 'test']
         data_path = dataset_folder_path + indexList[trainIndex] + '/aligned/'
@@ -61,9 +63,7 @@ class ABAWDataset(IterableDataset):
             # get the indices
             filenames = natsort.natsorted(glob.glob(path + '/' + folder + '_aligned/frame*.jpg'))
             assert len(filenames) != 0
-            random_indexes = random.randint(0, len(filenames) - self.imgRandomLen)
-            random_images = filenames[random_indexes:(random_indexes + self.imgRandomLen)]
-
+            random_images = self.sampling.get_sampled_images(filenames)
             resized_images = []
             for data_file in random_images:
                 image = cv2.imread(data_file)
@@ -125,7 +125,7 @@ class Collator(object):
 
     def __call__(self, data):
         '''
-        Select a specfic number of images randomly for the time being
+        Select a specific number of images randomly for the time being
         :param data:
         :return: batch_x {'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
         batch_y np.array: bs, 7;
