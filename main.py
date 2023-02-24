@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
 from trainers.eri import ERI
-from dataloaders.dataloader_abaw import ABAWDataModule
+from dataloaders.dataloader_abaw_iter import ABAWDataModule
 
 
 def load_callbacks():
