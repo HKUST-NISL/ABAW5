@@ -13,7 +13,7 @@ from dataloaders.sampling_strategy import SamplingStrategy
 import torch
 import os
 
-class ABAWDataset(IterableDataset):
+class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
         '''
         :param args: contains dataset_folder_path
@@ -28,11 +28,12 @@ class ABAWDataset(IterableDataset):
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
-        self.total_data = []
 
         self.input_image_size = args['input_image_size']
+        self.all_image_lists = []
+        self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*'):#[:10]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -46,41 +47,68 @@ class ABAWDataset(IterableDataset):
             data_entry['videoPath'] = data_file
 
             data_entry['intensity'] = np.array(intensity)
+            folder = data_file.split('/')[-1]
+            # get the indices
+            image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
+            data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
-            self.total_data.append(data_entry)
+
+            self.video_dict[file_name] = data_entry
+
+            for img_path in image_paths:
+                this_image = {
+                    'path': img_path,
+                    'vid': file_name,
+                }
+                self.all_image_lists.append(this_image)
 
         self.args = args
-        self.data_total_length = len(self.total_data)
+        self.data_total_length = len(self.all_image_lists)
 
         print(F'total_len = {self.data_total_length}')
 
-    #def __getitem__(self, index):
-    #    return self.total_data[index]
-    def __iter__(self):
-        for data_entry in self.total_data:
-            output = {}
-            path = data_entry['videoPath']
-            folder = path.split('/')[-1]
-            # get the indices
-            filenames = natsort.natsorted(glob.glob(path + '/' + folder + '_aligned/frame*.jpg'))
-            assert len(filenames) != 0
-            random_images = self.sampling.get_sampled_images(filenames)
-            resized_images = []
-            for data_file in random_images:
-                image = cv2.imread(data_file)
-                height = image.shape[0]
-                if height != self.input_image_size:
-                    image = cv2.resize(image, (self.input_image_size, self.input_image_size))
-                
-                resized_images.append(image.transpose(2, 0, 1))
-            resized_images = np.stack(resized_images)
-            output['images'] = (torch.from_numpy(resized_images.astype(np.float32)) - 128 )/ 255
-            output['intensity'] = torch.from_numpy(data_entry['intensity']).float()
-            output['age'] = torch.from_numpy(data_entry['age'])
-            output['country'] = torch.from_numpy(data_entry['country'])
-            del resized_images, image
-            yield output
+    def __getitem__(self, index):
+        output = {}
+        # path = data_entry['videoPath']
+        # folder = path.split('/')[-1]
+        # # get the indices
+        image_entry = self.all_image_lists[index]
+        image_path = image_entry['path']
+        vid_name = image_entry['vid']
+
+        video_entry = self.video_dict[vid_name]
+    
+        image = cv2.imread(image_path)
+        image = cv2.resize(image, (self.input_image_size, self.input_image_size))
+        resized_image = image.transpose(2, 0, 1)
+        output['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
+        output['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+        output['age'] = torch.from_numpy(video_entry['age'])
+        output['country'] = torch.from_numpy(video_entry['country'])
+        # del resized_images, image
+        return output
+
+    # def __iter__(self):
+    #     for image_entry in self.all_image_lists:
+    #         output = {}
+    #         # path = data_entry['videoPath']
+    #         # folder = path.split('/')[-1]
+    #         # # get the indices
+    #         image_path = image_entry['path']
+    #         vid_name = image_entry['vid']
+
+    #         video_entry = self.video_dict[vid_name]
+        
+    #         image = cv2.imread(image_path)
+    #         image = cv2.resize(image, (self.input_image_size, self.input_image_size))
+    #         resized_image = image.transpose(2, 0, 1)
+    #         output['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
+    #         output['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+    #         output['age'] = torch.from_numpy(video_entry['age'])
+    #         output['country'] = torch.from_numpy(video_entry['country'])
+    #         # del resized_images, image
+    #         yield output
 
     def __len__(self):
         return self.data_total_length
@@ -99,15 +127,15 @@ class ABAWDataModule(pl.LightningDataModule):
 
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
-                                       num_workers=2,
+                                       num_workers=8,
                                        collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
-                                     num_workers=2,
+                                     num_workers=8,
                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=1,
-                                      num_workers=2,
+                                      num_workers=8,
                                       collate_fn=collate_fn)
 
     def train_dataloader(self):
@@ -155,12 +183,12 @@ if __name__ == '__main__':
                               shuffle=True)
     for batch in train_loader:
         print(batch)'''
-    dataset = ABAWDataModule(dataset_folder_path="./dataset/",
-                             batch_size=4,
+    dataset = ABAWDataModule(dataset_folder_path="./dataset/abaw5",
+                             batch_size=32,
                              input_image_size=299,
                              )
-    for batch in tqdm(dataset.train_loader):
-        image = batch[0]
-        del batch, image
+    # pbar = tqdm(len(dataset.train_loader))
+    for batch in tqdm(dataset.val_loader):
+        pass
 
 

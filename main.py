@@ -34,11 +34,11 @@ def main(args):
     pl.seed_everything(args.seed)
 
     if args.trainer_name == 'eri':
-        model = ERI(**vars(args))
+        model = ERI(**vars(args))#.cuda()
         data_module = ABAWDataModule(**vars(args))
     else:
         print('Invalid model')
-    model = model.cuda()
+
     if args.checkpoint == 'None':
         args.checkpoint = None
 
@@ -69,11 +69,11 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     # Basic Training Control
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--num_workers', default=8, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
-    parser.add_argument('-gpus', default='0', type=str)
+    parser.add_argument('-gpus', default='1', type=str)
 
     parser.add_argument('-grad_accumulate', type=int, default=1)
     parser.add_argument('-clip_val', default=1.0, type=float)

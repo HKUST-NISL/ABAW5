@@ -33,9 +33,8 @@ class ERI(LightningModule):
         return [optimizer], [lr_scheduler]
     
     def _calculate_loss(self, batch, mode="train"):
-        
         data, labels = batch
-        imgs = data['images'].to(self.device).squeeze(1)
+        imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
         loss = F.mse_loss(preds, labels)
@@ -44,12 +43,21 @@ class ERI(LightningModule):
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         loss = self._calculate_loss(batch, mode="train")
+
+        # self.log("train_a", acc, on_step=False, on_epoch=True)
+        self.log("train_loss", loss)
         
         return loss
 
     def validation_step(self, batch, batch_idx):
         # TODO: add logging, also add validation_epoch_end
-        self._calculate_loss(batch, mode="val")
+        data, labels = batch
+        imgs = data['images'].to(self.device)
+        labels = labels.to(self.device)
+        preds = self(imgs)
+        pcc = (labels == preds).float().mean()
+        # By default logs it per epoch (weighted average over batches)
+        self.log("val_pcc", pcc)
 
     def test_step(self, batch, batch_idx):
         pass
