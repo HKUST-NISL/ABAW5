@@ -11,7 +11,7 @@ import glob
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 random.seed(1)
-
+import natsort
 
 def spotting(result, k, p):
     score_plot = np.array(result)
@@ -77,29 +77,36 @@ def SOFTNet():
     return model
 
 
-def testing(model_path, data_path, save):
-    predictor_model = "dataset/optical_flow/shape_predictor_68_face_landmarks.dat"
+def testing(model_path, data_path, save, batch):
+    predictor_model = "dataset/MaE_model/shape_predictor_68_face_landmarks.dat"
     face_detector = dlib.get_frontal_face_detector()
     face_pose_predictor = dlib.shape_predictor(predictor_model)
-    batch_size = 10
     k = 18 # for macro and CASME
     model = SOFTNet()
     model.load_weights(model_path)
-    save_path = data_path + '/optical_flow'
+    save_path = data_path + '/MaE_score'
     if not os.path.exists(save_path):
         os.mkdir(save_path)
-    for feature in glob.glob(data_path + '/processed/*.npy'):
-        data = np.load(feature) #[:50]
-        flow_vectors = get_of(data, k, face_pose_predictor, face_detector) # 44, 42, 42, 3
-        y = np.ones((data.shape[0]))
+
+    for i, dir_sub in enumerate(natsort.natsorted(glob.glob(data_path + "aligned/*"))):
+        images = []
+        folder = dir_sub.split('/')[-1]
+        image_path = dir_sub + '/' + folder + '_aligned'
+        for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
+            image = cv2.imread(dir_sub_vid_img, 0)
+            image = cv2.resize(image, (128, 128))
+            images.append(image)
+        images = np.stack(images)
+        flow_vectors = get_of(images, k, face_pose_predictor, face_detector) # 44, 42, 42, 3
+        y = np.ones((images.shape[0]))
         result = model.predict_generator(
-                generator(flow_vectors, y, batch_size),
-                steps=len(flow_vectors)/batch_size,
+                generator(flow_vectors, y, batch),
+                steps=len(flow_vectors)/batch,
                 verbose=1
             )
         #print(result)
         if save:
-            np.save(save_path+'/'+str(feature.split('/')[-1]), result)
+            np.save(save_path+'/'+folder, result)
 
 
 def plot(path):
@@ -109,12 +116,11 @@ def plot(path):
     spotting(result, k, p)
 
 
-
 if __name__ == '__main__':
-    '''testing('dataset/optical_flow/s1.hdf5',
+    testing('dataset/MaE_model/s1.hdf5',
             'dataset/val/',
-            save=True)'''
-    '''testing('dataset/optical_flow/s1.hdf5',
+            save=True, batch=10)
+    testing('dataset/MaE_model/s1.hdf5',
             'dataset/train/',
-            save=True)'''
-    plot('dataset/train/optical_flow/02127.npy')
+            save=True, batch=10)
+    #plot('dataset/train/MaE_score/08719.npy')
