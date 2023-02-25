@@ -1,3 +1,7 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow as tf
@@ -12,6 +16,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 random.seed(1)
 import natsort
+from tqdm import tqdm
+
 
 def spotting(result, k, p):
     score_plot = np.array(result)
@@ -88,7 +94,11 @@ def testing(model_path, data_path, save, batch):
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
-    for i, dir_sub in enumerate(natsort.natsorted(glob.glob(data_path + "aligned/*"))):
+    # Compute Optical Flow Features
+    # optical_flow = cv2.DualTVL1OpticalFlow_create() #Depends on cv2 version
+    optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
+
+    for i, dir_sub in tqdm(enumerate(natsort.natsorted(glob.glob(data_path + "aligned/*")))):
         images = []
         folder = dir_sub.split('/')[-1]
         image_path = dir_sub + '/' + folder + '_aligned'
@@ -97,7 +107,7 @@ def testing(model_path, data_path, save, batch):
             image = cv2.resize(image, (128, 128))
             images.append(image)
         images = np.stack(images)
-        flow_vectors = get_of(images, k, face_pose_predictor, face_detector) # 44, 42, 42, 3
+        flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow) # 44, 42, 42, 3
         y = np.ones((images.shape[0]))
         result = model.predict_generator(
                 generator(flow_vectors, y, batch),

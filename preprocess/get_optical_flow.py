@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import pandas as pd
 import cv2
-from tqdm import tqdm
+
 
 def pol2cart(rho, phi):  # Convert polar coordinates to cartesian coordinates for computation of optical strain
     x = rho * np.cos(phi)
@@ -20,9 +20,9 @@ def computeStrain(u, v):
     return os
 
 
-def get_of(final_images, k, face_pose_predictor, face_detector):
+def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow):
     OFF_video = []
-    for img_count in tqdm(range(final_images.shape[0] - k)):
+    for img_count in range(final_images.shape[0] - k):
         img1 = final_images[img_count]
         img2 = final_images[img_count + k]
         if (img_count == 0):
@@ -85,9 +85,6 @@ def get_of(final_images, k, face_pose_predictor, face_detector):
             x61 = shape.part(28).x
             y61 = shape.part(28).y
 
-        # Compute Optical Flow Features
-        # optical_flow = cv2.DualTVL1OpticalFlow_create() #Depends on cv2 version
-        optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
         flow = optical_flow.calc(img1, img2, None)
         magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
         u, v = pol2cart(magnitude, angle)
