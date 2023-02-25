@@ -10,14 +10,14 @@ from dataloaders.dataloader_abaw_iter import ABAWDataModule
 def load_callbacks():
     callbacks = []
     callbacks.append(plc.EarlyStopping(
-        monitor='val_acc',
+        monitor='val_pcc',
         mode='max',
         patience=10,
         min_delta=0.001
     ))
 
     callbacks.append(plc.ModelCheckpoint(
-        monitor='val_acc',
+        monitor='val_pcc',
         filename='best-{epoch:02d}-{val_acc:.3f}',
         save_top_k=1,
         mode='max',

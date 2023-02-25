@@ -33,7 +33,7 @@ class ABAWDataset(Dataset):
         self.all_image_lists = []
         self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*'):#[:10]:
+        for data_file in glob.glob(data_path + '/*')[:10]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -66,13 +66,10 @@ class ABAWDataset(Dataset):
         self.args = args
         self.data_total_length = len(self.all_image_lists)
 
-        print(F'total_len = {self.data_total_length}')
+        print('%s: %d' % (indexList[trainIndex], self.data_total_length))
 
     def __getitem__(self, index):
-        output = {}
-        # path = data_entry['videoPath']
-        # folder = path.split('/')[-1]
-        # # get the indices
+        data = {}
         image_entry = self.all_image_lists[index]
         image_path = image_entry['path']
         vid_name = image_entry['vid']
@@ -82,33 +79,12 @@ class ABAWDataset(Dataset):
         image = cv2.imread(image_path)
         image = cv2.resize(image, (self.input_image_size, self.input_image_size))
         resized_image = image.transpose(2, 0, 1)
-        output['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
-        output['intensity'] = torch.from_numpy(video_entry['intensity']).float()
-        output['age'] = torch.from_numpy(video_entry['age'])
-        output['country'] = torch.from_numpy(video_entry['country'])
-        # del resized_images, image
-        return output
-
-    # def __iter__(self):
-    #     for image_entry in self.all_image_lists:
-    #         output = {}
-    #         # path = data_entry['videoPath']
-    #         # folder = path.split('/')[-1]
-    #         # # get the indices
-    #         image_path = image_entry['path']
-    #         vid_name = image_entry['vid']
-
-    #         video_entry = self.video_dict[vid_name]
-        
-    #         image = cv2.imread(image_path)
-    #         image = cv2.resize(image, (self.input_image_size, self.input_image_size))
-    #         resized_image = image.transpose(2, 0, 1)
-    #         output['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
-    #         output['intensity'] = torch.from_numpy(video_entry['intensity']).float()
-    #         output['age'] = torch.from_numpy(video_entry['age'])
-    #         output['country'] = torch.from_numpy(video_entry['country'])
-    #         # del resized_images, image
-    #         yield output
+        data['vid'] = vid_name
+        data['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
+        data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+        data['age'] = torch.from_numpy(video_entry['age'])
+        data['country'] = torch.from_numpy(video_entry['country'])
+        return data
 
     def __len__(self):
         return self.data_total_length

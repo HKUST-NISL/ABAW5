@@ -49,15 +49,20 @@ class ERI(LightningModule):
         
         return loss
 
+
     def validation_step(self, batch, batch_idx):
-        # TODO: add logging, also add validation_epoch_end
+        vid_preds = {}
         data, labels = batch
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
+        vids = data['vid']
         pcc = (labels == preds).float().mean()
         # By default logs it per epoch (weighted average over batches)
         self.log("val_pcc", pcc)
+
+        result = {"val_pcc": pcc}
+        return result
 
     def test_step(self, batch, batch_idx):
         pass
