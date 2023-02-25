@@ -97,8 +97,9 @@ def testing(model_path, data_path, save, batch):
     # Compute Optical Flow Features
     # optical_flow = cv2.DualTVL1OpticalFlow_create() #Depends on cv2 version
     optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
-
-    for i, dir_sub in tqdm(enumerate(natsort.natsorted(glob.glob(data_path + "aligned/*")))):
+    files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
         images = []
         folder = dir_sub.split('/')[-1]
         image_path = dir_sub + '/' + folder + '_aligned'
@@ -112,7 +113,7 @@ def testing(model_path, data_path, save, batch):
         result = model.predict_generator(
                 generator(flow_vectors, y, batch),
                 steps=len(flow_vectors)/batch,
-                verbose=1
+                verbose=0
             )
         #print(result)
         if save:
