@@ -1,6 +1,8 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
+import warnings
+warnings.filterwarnings("ignore")
 
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -93,6 +95,10 @@ def testing(model_path, data_path, save, batch):
     save_path = data_path + '/MaE_score'
     if not os.path.exists(save_path):
         os.mkdir(save_path)
+        already_saved = []
+    else:
+        already_saved = natsort.natsorted(glob.glob(save_path+'/*'))
+        already_saved = [x.split('/')[-1][:-4] for x in already_saved]
 
     # Compute Optical Flow Features
     # optical_flow = cv2.DualTVL1OpticalFlow_create() #Depends on cv2 version
@@ -100,24 +106,32 @@ def testing(model_path, data_path, save, batch):
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
     for i in tqdm(range(len(files))):
         dir_sub = files[i]
-        images = []
         folder = dir_sub.split('/')[-1]
-        image_path = dir_sub + '/' + folder + '_aligned'
-        for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
-            image = cv2.imread(dir_sub_vid_img, 0)
-            image = cv2.resize(image, (128, 128))
-            images.append(image)
-        images = np.stack(images)
-        flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow) # 44, 42, 42, 3
-        y = np.ones((images.shape[0]))
-        result = model.predict_generator(
-                generator(flow_vectors, y, batch),
-                steps=len(flow_vectors)/batch,
-                verbose=0
-            )
-        #print(result)
-        if save:
-            np.save(save_path+'/'+folder, result)
+        if folder in already_saved:
+            continue
+        try:
+            images = []
+            image_path = dir_sub + '/' + folder + '_aligned'
+            for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
+                image = cv2.imread(dir_sub_vid_img, 0)
+                image = cv2.resize(image, (128, 128))
+                images.append(image)
+            images = np.stack(images)
+            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow) # 44, 42, 42, 3
+            y = np.ones((images.shape[0]))
+            result = model.predict_generator(
+                    generator(flow_vectors, y, batch),
+                    steps=len(flow_vectors)/batch,
+                    verbose=0
+                )
+            #print(result)
+            if save:
+                np.save(save_path+'/'+folder, result)
+        except:
+            print('Error when processing ', dir_sub)
+        # todo: check if no face detected
+        # todo: enabled saved file check
+
 
 
 def plot(path):
