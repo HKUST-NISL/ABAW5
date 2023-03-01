@@ -70,12 +70,25 @@ class ERI(LightningModule):
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        vids = data['vid']
-        pcc = (labels == preds).float().mean()
-        # By default logs it per epoch (weighted average over batches)
-        self.log("val_pcc", pcc)
+        result = {"val_preds": preds,
+                  "val_labels": labels}
+        return result
+    
+    def validation_epoch_end(self, validation_step_outputs):
+        preds = torch.stack(validation_step_outputs['val_preds'])
+        labels = torch.stack(validation_step_outputs['val_labels'])
 
-        result = {"val_pcc": pcc}
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
+        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
+            (torch.sum((preds-preds_mean)**2) * torch.sum((labels-labels_mean)**2))**0.5
+        
+        apcc = torch.mean(pcc)
+
+        self.log('val_apcc', apcc, on_epoch=True, on_step=False)
+        
+        result = {"val_apcc": apcc}
         return result
 
     def test_step(self, batch, batch_idx):
