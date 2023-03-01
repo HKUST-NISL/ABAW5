@@ -24,6 +24,25 @@ def create_transform(in_size=224):
 
     return transform   
 
+class Collator(object):
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, data):
+        '''
+        Select a specific number of images randomly for the time being
+        :param data:
+        :return: batch_x torch.tensor{'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
+        batch_y torch.tensor: bs, 7;
+        '''
+        batch_x = {}
+        batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['age'] = torch.stack([x['age'] for x in data])
+        batch_x['country'] = torch.stack([x['country'] for x in data])
+        # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
+        batch_y = torch.stack([x['intensity'] for x in data])
+        return batch_x, batch_y
+
 
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
@@ -61,7 +80,7 @@ class ABAWDataset(Dataset):
             country = info.iloc[0, 10]
             assert country == 'United States' or 'South Africa'
 
-            data_entry['videoPath'] = data_file
+            # data_entry['videoPath'] = data_file
 
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
@@ -121,17 +140,20 @@ class ABAWDataModule(pl.LightningDataModule):
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
         test_set = ABAWDataset(1, **args)
-        # collate_fn = Collator()
+        collate_fn = Collator()
 
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
-                                       num_workers=8)
+                                       num_workers=8,
+                                      collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
-                                     num_workers=8)
+                                     num_workers=8,
+                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=1,
-                                      num_workers=8)
+                                      num_workers=8,
+                                      collate_fn=collate_fn)
 
     def train_dataloader(self):
         return self.train_loader

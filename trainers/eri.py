@@ -24,18 +24,15 @@ class ERI(LightningModule):
 
         self.model = getattr(models, args['model_name'])()
 
-        # 
-
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-        self.head = nn.Linear(2048, 7, bias=False)
+        self.head = nn.Linear(self.model.out_c, 7, bias=False)
     
     def forward(self, x):
         b, n, c, h, w = x.shape
 
         x = self.model(x.view(b*n, c, h, w))
         x = self.transformer(x.view(b, n, -1))
-
         x = torch.mean(x, dim=1)
         x = torch.sigmoid(self.head(x))
 
@@ -69,14 +66,16 @@ class ERI(LightningModule):
         data, labels = batch
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
-        preds = self(imgs)
+        with torch.no_grad():
+            preds = self(imgs)
         result = {"val_preds": preds,
                   "val_labels": labels}
         return result
     
     def validation_epoch_end(self, validation_step_outputs):
-        preds = torch.stack(validation_step_outputs['val_preds'])
-        labels = torch.stack(validation_step_outputs['val_labels'])
+
+        preds = torch.stack([data['val_preds'] for data in validation_step_outputs])
+        labels = torch.stack([data['val_labels'] for data in validation_step_outputs])
 
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
@@ -104,4 +103,6 @@ if __name__ == '__main__':
     x['images'] = torch.rand(4, 30, 3, 256, 256)
     y = torch.rand(4, 7)
     loss = model._calculate_loss((x, y))
-    print(y)
+
+    # yy = model(x)
+    print(y.shape)
