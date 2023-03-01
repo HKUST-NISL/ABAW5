@@ -23,10 +23,23 @@ class ERI(LightningModule):
         self.snippet_size = args['snippet_size']
 
         self.model = getattr(models, args['model_name'])()
-        self.head = nn.Linear(self.model.out_c, 7, bias=False)
+
+        # 
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.head = nn.Linear(2048, 7, bias=False)
     
     def forward(self, x):
-        return torch.sigmoid(self.head(self.model(x)))
+        b, n, c, h, w = x.shape
+
+        x = self.model(x.view(b*n, c, h, w))
+        x = self.transformer(x.view(b, n, -1))
+
+        x = torch.mean(x, dim=1)
+        x = torch.sigmoid(self.head(x))
+
+        return x
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr)
@@ -72,10 +85,10 @@ class ERI(LightningModule):
 if __name__ == '__main__':
 
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = ERI(model_name="Res50", lr=1e-4, snippet_size=30).cuda()
+    model = ERI(model_name="Res50", lr=1e-4, snippet_size=30)#.cuda()
 
     x = {}
-    x['images'] = torch.rand(4, 3, 256, 256)
+    x['images'] = torch.rand(4, 30, 3, 256, 256)
     y = torch.rand(4, 7)
     loss = model._calculate_loss((x, y))
     print(y)
