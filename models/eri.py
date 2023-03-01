@@ -29,7 +29,12 @@ class ERI(LightningModule):
         self.decay_steps = args['lr_decay_steps']
         self.epochs = args['num_epochs']
 
+        self.pretrained = args['pretrained']
+
         self.model = getattr(models, args['model_name'])()
+
+        ckpt = torch.load(self.pretrained)['state_dict']
+        self.model.load_state_dict(ckpt)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
