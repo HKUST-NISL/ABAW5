@@ -21,6 +21,11 @@ class ERI(LightningModule):
 
         self.lr = args['lr']
         self.snippet_size = args['snippet_size']
+        self.optim_type = args['optimizer']
+        self.scheduler_type = args['lr_scheduler']
+        self.gamma = args['lr_decay_rate']
+        self.decay_steps = args['lr_decay_steps']
+        self.epochs = args['num_epochs']
 
         self.model = getattr(models, args['model_name'])()
 
@@ -39,8 +44,18 @@ class ERI(LightningModule):
         return x
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.lr)
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 150], gamma=0.1) #TODO: should be in args
+        if self.optim_type == 'adamw':
+            optimizer = optim.AdamW(self.parameters(), lr=self.lr)
+        elif self.optim_type == 'adam':
+            optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        
+        if self.scheduler_type == 'step':
+            lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.decay_steps, gamma=self.gamma)
+        elif self.scheduler_type == 'cosine':
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, self.epochs)
+        elif self.scheduler_type == 'exponential':
+            lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.gamma)
+            
         return [optimizer], [lr_scheduler]
     
     def _calculate_loss(self, batch, mode="train"):
@@ -48,7 +63,9 @@ class ERI(LightningModule):
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        loss = F.mse_loss(preds, labels)
+        # loss = F.mse_loss(preds, labels)
+        loss = torch.mean(torch.abs(preds - labels))
+        # print(loss)
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -85,9 +102,9 @@ class ERI(LightningModule):
         
         apcc = torch.mean(pcc)
 
-        self.log('val_apcc', apcc, on_epoch=True, on_step=False)
-        
+        self.log('val_apcc', apcc, on_epoch=True)
         result = {"val_apcc": apcc}
+        # print(result)
         return result
 
     def test_step(self, batch, batch_idx):

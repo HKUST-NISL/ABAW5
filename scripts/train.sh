@@ -1,0 +1,1 @@
+python main.py --batch_size 1 --optimizer adamw --lr_scheduler cosine --num_epochs 50 --lr 1e-4

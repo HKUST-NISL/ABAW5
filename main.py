@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
-from trainers.eri import ERI
+from models.eri import ERI
 from dataloaders.abaw_snippet import ABAWDataModule
 
 
@@ -75,13 +75,14 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=1e-3, type=float)
     parser.add_argument('-gpus', default='1', type=str)
 
-    parser.add_argument('-grad_accumulate', type=int, default=1)
-    parser.add_argument('-clip_val', default=1.0, type=float)
-    parser.add_argument('-limit_val_batches', default=1.0, type=float)
-    parser.add_argument('-val_check_interval', default=1.0, type=float)
+    parser.add_argument('--grad_accumulate', type=int, default=1)
+    parser.add_argument('--clip_val', default=1.0, type=float)
+    parser.add_argument('--limit_val_batches', default=1.0, type=float)
+    parser.add_argument('--val_check_interval', default=1.0, type=float)
 
     # LR Scheduler
-    parser.add_argument('--lr_scheduler', choices=['step', 'cosine'], type=str)
+    parser.add_argument('--optimizer', default='adam', type=str)
+    parser.add_argument('--lr_scheduler', choices=['step', 'cosine', 'exponential'], default='cosine', type=str)
     parser.add_argument('--lr_decay_steps', default=20, type=int)
     parser.add_argument('--lr_decay_rate', default=0.5, type=float)
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
@@ -100,9 +101,9 @@ if __name__ == '__main__':
     parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)
     parser.add_argument('--no_augment', action='store_true')
-    parser.add_argument('--log_dir', default='lightning_logs', type=str)
+    parser.add_argument('--log_dir', default='experiments', type=str)
     parser.add_argument('--log_name', default='eri', type=str)
-    parser.add_argument('-num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=10)
 
     # Model Hyperparameters
     # TODO: add
