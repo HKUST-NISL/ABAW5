@@ -20,6 +20,7 @@ class ERI(LightningModule):
         super().__init__()
 
         self.lr = args['lr']
+        self.snippet_size = args['snippet_size']
 
         self.model = getattr(models, args['model_name'])()
         self.head = nn.Linear(self.model.out_c, 7, bias=False)
@@ -71,7 +72,7 @@ class ERI(LightningModule):
 if __name__ == '__main__':
 
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = ERI(model_name="Res50", lr=1e-4).cuda()
+    model = ERI(model_name="Res50", lr=1e-4, snippet_size=30).cuda()
 
     x = {}
     x['images'] = torch.rand(4, 3, 256, 256)

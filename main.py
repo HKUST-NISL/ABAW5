@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
 from trainers.eri import ERI
-from dataloaders.dataloader_abaw_iter import ABAWDataModule
+from dataloaders.abaw_snippet import ABAWDataModule
 
 
 def load_callbacks():
@@ -92,7 +92,8 @@ if __name__ == '__main__':
     # Training Info
     parser.add_argument('--train', default='True', type=str)
     parser.add_argument('--dataset_folder_path', default='./dataset/abaw5', type=str)
-    parser.add_argument('--input_image_size', default=299, type=int)
+    parser.add_argument('--input_size', default=299, type=int)
+    parser.add_argument('--snippet_size', default=30, type=int)
 
     parser.add_argument('--trainer_name', default='eri', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
