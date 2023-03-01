@@ -62,13 +62,15 @@ class ABAWDataset(Dataset):
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
+        self.sample_times = args['sample_times']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        for data_file in glob.glob(data_path + '/*'):#[:100]:
+        for data_file in glob.glob(data_path + '/*'):
+        # for data_file in glob.glob(data_path + '/*')[:100]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -101,6 +103,9 @@ class ABAWDataset(Dataset):
                 self.all_image_lists.append(this_image)
 
         self.args = args
+        self.vid_list = self.vid_list * self.sample_times
+        # if trainIndex > 0:
+        #     self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
         print('%s: videos: %d images: %d' % (indexList[trainIndex], len(self.vid_list), len(self.all_image_lists)))

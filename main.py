@@ -95,6 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_folder_path', default='./dataset/abaw5', type=str)
     parser.add_argument('--input_size', default=299, type=int)
     parser.add_argument('--snippet_size', default=30, type=int)
+    parser.add_argument('--sample_times', default=5, type=int)
 
     parser.add_argument('--trainer_name', default='eri', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)

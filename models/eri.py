@@ -21,6 +21,8 @@ class ERI(LightningModule):
 
         self.lr = args['lr']
         self.snippet_size = args['snippet_size']
+        self.sample_times = args['sample_times']
+
         self.optim_type = args['optimizer']
         self.scheduler_type = args['lr_scheduler']
         self.gamma = args['lr_decay_rate']
@@ -93,6 +95,9 @@ class ERI(LightningModule):
 
         preds = torch.stack([data['val_preds'] for data in validation_step_outputs])
         labels = torch.stack([data['val_labels'] for data in validation_step_outputs])
+
+        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
 
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
