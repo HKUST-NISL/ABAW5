@@ -140,8 +140,8 @@ def compareDlibAndOpenface():
 def testOpticalFlow(img1path, img2path):
     import time
     t1 = time.time()
-    img1 = cv2.imread(img1path)
-    img2 = cv2.imread(img2path)
+    img1 = cv2.imread(img1path, 0)
+    img2 = cv2.imread(img2path, 0)
     optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
     flow = optical_flow.calc(img1, img2, None)
     t2 = time.time()
@@ -159,5 +159,6 @@ def testOpticalFlow(img1path, img2path):
 
 
 if __name__ == '__main__':
-    compareDlibAndOpenface()
-    testOpticalFlow(img1path, img2path)
+    #compareDlibAndOpenface()
+    testOpticalFlow('dataset/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
+                    'dataset/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')

@@ -105,15 +105,10 @@ def testing(model_path, data_path, save, batch):
     optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
     for i in tqdm(range(len(files))):
-        # todo: debug
-        dir_sub = 'dataset/train/aligned/00022'
-        folder = '00022'
-        #dir_sub = files[i]
-        #folder = dir_sub.split('/')[-1]
-        # todo: uncomment
-        print('skip disabled')
-        #if folder in already_saved:
-        #    continue
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        if folder in already_saved:
+            continue
         try:
             images = []
             image_path = dir_sub + '/' + folder + '_aligned'
@@ -129,10 +124,6 @@ def testing(model_path, data_path, save, batch):
                     steps=int(len(flow_vectors)/batch),
                     verbose=0
                 )
-            # todos:
-            # get ldmk from file, compare with dlib
-            # save error numpy
-
             #print(result)
             if save:
                 np.save(save_path+'/'+folder, result)
