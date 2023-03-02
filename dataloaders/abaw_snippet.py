@@ -53,7 +53,7 @@ class ABAWDataset(Dataset):
         '''
         #self.imgRandomLen = 10 #for the time being
         self.sampling = SamplingStrategy()
-        dataset_folder_path = args['dataset_folder_path']
+        dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
 
@@ -175,7 +175,7 @@ class ABAWDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
   
-    dataset = ABAWDataModule(dataset_folder_path="./dataset/abaw5",
+    dataset = ABAWDataModule(data_dir="./dataset/abaw5",
                              batch_size=2,
                              input_size=224,
                              snippet_size = 30
