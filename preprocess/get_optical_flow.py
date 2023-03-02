@@ -22,9 +22,13 @@ def computeStrain(u, v):
 
 def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow):
     OFF_video = []
+    gpu_frame = cv2.cuda_GpuMat()
+    gpu_frame2 = cv2.cuda_GpuMat()
     for img_count in range(final_images.shape[0] - k):
         img1 = final_images[img_count]
         img2 = final_images[img_count + k]
+        gpu_frame.upload(img1)
+        gpu_frame2.upload(img2)
         if (img_count == 0):
             reference_img = img1
             detect = face_detector(reference_img, 1)
@@ -85,7 +89,8 @@ def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow):
             x61 = shape.part(28).x
             y61 = shape.part(28).y
 
-        flow = optical_flow.calc(img1, img2, None)
+        flow = optical_flow.calc(gpu_frame, gpu_frame2, None)
+        flow = flow.download()
         magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
         u, v = pol2cart(magnitude, angle)
         os = computeStrain(u, v)
@@ -153,12 +158,12 @@ def testOpticalFlow(img1path, img2path):
     gpu_frame2 = cv2.cuda_GpuMat()
     gpu_frame2.upload(img2)
     of_gpu = cv2.cuda.OpticalFlowDual_TVL1_create()
-    flow_gpu = of_gpu.cal(gpu_frame, gpu_frame2)
+    flow_gpu = of_gpu.calc(gpu_frame, gpu_frame2, None)
     t2 = time.time()
     print('gpu: ', str(t2 - t1))
 
 
 if __name__ == '__main__':
     #compareDlibAndOpenface()
-    testOpticalFlow('dataset/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
-                    'dataset/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')
+    testOpticalFlow('/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
+                    '/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')

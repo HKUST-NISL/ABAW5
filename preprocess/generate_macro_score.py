@@ -1,6 +1,6 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -102,33 +102,37 @@ def testing(model_path, data_path, save, batch):
 
     # Compute Optical Flow Features
     # optical_flow = cv2.DualTVL1OpticalFlow_create() #Depends on cv2 version
-    optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
+    optical_flow = cv2.cuda.OpticalFlowDual_TVL1_create()
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
     for i in tqdm(range(len(files))):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
         if folder in already_saved:
             continue
+        
+        images = []
+        image_path = dir_sub + '/' + folder + '_aligned'
+        for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
+            image = cv2.imread(dir_sub_vid_img, 0)  # 224, 224 
+            image = cv2.resize(image, (128, 128))
+            images.append(image)
+        images = np.stack(images)
         try:
-            images = []
-            image_path = dir_sub + '/' + folder + '_aligned'
-            for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
-                image = cv2.imread(dir_sub_vid_img, 0)  # 224, 224
-                image = cv2.resize(image, (128, 128))
-                images.append(image)
-            images = np.stack(images)
             flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow) # 44, 42, 42, 3
-            y = np.ones((images.shape[0]))
-            result = model.predict_generator(
-                    generator(flow_vectors, y, batch),
-                    steps=int(len(flow_vectors)/batch),
-                    verbose=0
-                )
-            #print(result)
-            if save:
-                np.save(save_path+'/'+folder, result)
         except:
             print('Error when processing ', dir_sub)
+            continue
+        y = np.ones((images.shape[0]))
+        result = model.predict_generator(
+                generator(flow_vectors, y, batch),
+                steps=int(len(flow_vectors)/batch),
+                verbose=0
+            )
+        #print(result)
+        if save:
+            np.save(save_path+'/'+folder, result)
+        #except:
+        #    print('Error when processing ', dir_sub)
 
 
 
@@ -140,10 +144,10 @@ def plot(path):
 
 
 if __name__ == '__main__':
-    testing('dataset/MaE_model/s1.hdf5',
-            'dataset/val/',
-            save=True, batch=10)
-    testing('dataset/MaE_model/s1.hdf5',
-            'dataset/train/',
-            save=True, batch=10)
+    testing('./dataset/MaE_model/s1.hdf5',
+            '/data/abaw5/val/',
+            save=True, batch=64)
+    testing('./dataset/MaE_model/s1.hdf5',
+            '/data/abaw5/train/',
+            save=True, batch=64)
     #plot('dataset/train/MaE_score/08719.npy')
