@@ -105,15 +105,20 @@ def testing(model_path, data_path, save, batch):
     optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
     for i in tqdm(range(len(files))):
-        dir_sub = files[i]
-        folder = dir_sub.split('/')[-1]
-        if folder in already_saved:
-            continue
+        # todo: debug
+        dir_sub = 'dataset/train/aligned/00022'
+        folder = '00022'
+        #dir_sub = files[i]
+        #folder = dir_sub.split('/')[-1]
+        # todo: uncomment
+        print('skip disabled')
+        #if folder in already_saved:
+        #    continue
         try:
             images = []
             image_path = dir_sub + '/' + folder + '_aligned'
             for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
-                image = cv2.imread(dir_sub_vid_img, 0)
+                image = cv2.imread(dir_sub_vid_img, 0)  # 224, 224
                 image = cv2.resize(image, (128, 128))
                 images.append(image)
             images = np.stack(images)
@@ -121,16 +126,18 @@ def testing(model_path, data_path, save, batch):
             y = np.ones((images.shape[0]))
             result = model.predict_generator(
                     generator(flow_vectors, y, batch),
-                    steps=len(flow_vectors)/batch,
+                    steps=int(len(flow_vectors)/batch),
                     verbose=0
                 )
+            # todos:
+            # get ldmk from file, compare with dlib
+            # save error numpy
+
             #print(result)
             if save:
                 np.save(save_path+'/'+folder, result)
         except:
             print('Error when processing ', dir_sub)
-        # todo: check if no face detected
-        # todo: enabled saved file check
 
 
 
