@@ -69,8 +69,8 @@ class ABAWDataset(Dataset):
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        for data_file in glob.glob(data_path + '/*'):
-        # for data_file in glob.glob(data_path + '/*')[:100]:
+        # for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*')[:1000]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]

@@ -108,7 +108,7 @@ class ERI(LightningModule):
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            (torch.sum((preds-preds_mean)**2) * torch.sum((labels-labels_mean)**2))**0.5
+            (torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5
         
         apcc = torch.mean(pcc)
 
