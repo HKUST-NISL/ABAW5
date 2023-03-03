@@ -20,10 +20,9 @@ def computeStrain(u, v):
     return os
 
 
-def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow):
+def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow,
+           gpu_frame, gpu_frame2):
     OFF_video = []
-    gpu_frame = cv2.cuda_GpuMat()
-    gpu_frame2 = cv2.cuda_GpuMat()
     for img_count in range(final_images.shape[0] - k):
         img1 = final_images[img_count]
         img2 = final_images[img_count + k]
@@ -126,11 +125,12 @@ def compareDlibAndOpenface():
     face_detector = dlib.get_frontal_face_detector()
     face_pose_predictor = dlib.shape_predictor(predictor_model)
 
-    imgPath = 'dataset/train/aligned/02127/02127_aligned/frame_det_00_000001.jpg'
+    imgPath = 'dataset/train/images/02127/frame00000.jpg'
+    #imgPath = 'dataset/train/aligned/02767/02767_aligned/frame_det_00_000002.jpg'
     img = cv2.imread(imgPath)
     detect = face_detector(img, 1)
-    face = dlib.rectangle(left=0, top=0, right=224, bottom=224)
-    shape = face_pose_predictor(img, face)
+    #face = dlib.rectangle(left=0, top=0, right=224, bottom=224)
+    shape = face_pose_predictor(img, detect[0])
     ldmk_dlib = []
     for n in range(0, 68):
         x = shape.part(n).x
@@ -138,9 +138,12 @@ def compareDlibAndOpenface():
         ldmk_dlib.append((x, y))
 
     df = pd.read_csv("dataset/train/aligned/02127/02127.csv",dtype = {0:str}, nrows=1) #['x_0':'y_67']
+    # todo: check if it's all 0
     idx1 = df.columns.get_loc("x_0")
     idx2 = df.columns.get_loc("y_67")
     ldmk_openface = df.iloc[0, idx1:(idx2+1)].to_numpy().reshape(2, 68)
+    # todo: create a rectangle, same as detect[0]
+    a=1
 
 def testOpticalFlow(img1path, img2path):
     import time
@@ -164,6 +167,6 @@ def testOpticalFlow(img1path, img2path):
 
 
 if __name__ == '__main__':
-    #compareDlibAndOpenface()
-    testOpticalFlow('/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
-                    '/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')
+    compareDlibAndOpenface()
+    #testOpticalFlow('/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
+    #                '/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')

@@ -93,6 +93,8 @@ def testing(model_path, data_path, save, batch):
     model = SOFTNet()
     model.load_weights(model_path)
     save_path = data_path + '/MaE_score'
+    gpu_frame = cv2.cuda_GpuMat()
+    gpu_frame2 = cv2.cuda_GpuMat()
     if not os.path.exists(save_path):
         os.mkdir(save_path)
         already_saved = []
@@ -118,22 +120,22 @@ def testing(model_path, data_path, save, batch):
             images.append(image)
         images = np.stack(images)
         try:
-            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow) # 44, 42, 42, 3
-        except:
-            print('Error when processing ', dir_sub)
-            continue
-        y = np.ones((images.shape[0]))
-        result = model.predict_generator(
+            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
+                                  gpu_frame, gpu_frame2) # 44, 42, 42, 3
+            y = np.ones((images.shape[0]))
+            result = model.predict_generator(
                 generator(flow_vectors, y, batch),
-                steps=int(len(flow_vectors)/batch),
+                steps=int(len(flow_vectors) / batch),
                 verbose=0
             )
-        #print(result)
+            del images, flow_vectors, y
+        except:
+            print('Error when processing ', dir_sub)
+            del images
+            continue
         if save:
             np.save(save_path+'/'+folder, result)
-        #except:
-        #    print('Error when processing ', dir_sub)
-
+            del result
 
 
 def plot(path):
@@ -144,9 +146,9 @@ def plot(path):
 
 
 if __name__ == '__main__':
-    testing('./dataset/MaE_model/s1.hdf5',
-            '/data/abaw5/val/',
-            save=True, batch=64)
+    #testing('./dataset/MaE_model/s1.hdf5',
+    #        '/data/abaw5/val/',
+    #        save=True, batch=64)
     testing('./dataset/MaE_model/s1.hdf5',
             '/data/abaw5/train/',
             save=True, batch=64)
