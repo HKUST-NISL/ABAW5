@@ -5,16 +5,16 @@ import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
 from models.eri import ERI
 from dataloaders.abaw_snippet import ABAWDataModule
-
+from pytorch_lightning.callbacks import RichProgressBar
 
 def load_callbacks():
     callbacks = []
-    callbacks.append(plc.EarlyStopping(
-        monitor='val_apcc',
-        mode='max',
-        patience=10,
-        min_delta=0.001
-    ))
+    # callbacks.append(plc.EarlyStopping(
+    #     monitor='val_apcc',
+    #     mode='max',
+    #     patience=10,
+    #     min_delta=0.001
+    # ))
 
     callbacks.append(plc.ModelCheckpoint(
         monitor='val_apcc',
@@ -27,6 +27,8 @@ def load_callbacks():
     if args.lr_scheduler:
         callbacks.append(plc.LearningRateMonitor(
             logging_interval='epoch'))
+        
+    callbacks.append(RichProgressBar(leave=True))
     return callbacks
 
 
