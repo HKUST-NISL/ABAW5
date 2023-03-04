@@ -24,6 +24,25 @@ def create_transform(in_size=224):
 
     return transform   
 
+class Collator(object):
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, data):
+        '''
+        Select a specific number of images randomly for the time being
+        :param data:
+        :return: batch_x torch.tensor{'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
+        batch_y torch.tensor: bs, 7;
+        '''
+        batch_x = {}
+        batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['age'] = torch.stack([x['age'] for x in data])
+        batch_x['country'] = torch.stack([x['country'] for x in data])
+        # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
+        batch_y = torch.stack([x['intensity'] for x in data])
+        return batch_x, batch_y
+
 
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
@@ -34,7 +53,7 @@ class ABAWDataset(Dataset):
         '''
         #self.imgRandomLen = 10 #for the time being
         self.sampling = SamplingStrategy()
-        dataset_folder_path = args['dataset_folder_path']
+        dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
 
@@ -43,13 +62,15 @@ class ABAWDataset(Dataset):
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
+        self.sample_times = args['sample_times']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        for data_file in glob.glob(data_path + '/*'):#[:100]:
+        # for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*')[:300]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -61,7 +82,7 @@ class ABAWDataset(Dataset):
             country = info.iloc[0, 10]
             assert country == 'United States' or 'South Africa'
 
-            data_entry['videoPath'] = data_file
+            # data_entry['videoPath'] = data_file
 
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
@@ -82,6 +103,9 @@ class ABAWDataset(Dataset):
                 self.all_image_lists.append(this_image)
 
         self.args = args
+        self.vid_list = self.vid_list * self.sample_times
+        # if trainIndex > 0:
+        #     self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
         print('%s: videos: %d images: %d' % (indexList[trainIndex], len(self.vid_list), len(self.all_image_lists)))
@@ -121,17 +145,23 @@ class ABAWDataModule(pl.LightningDataModule):
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
         test_set = ABAWDataset(1, **args)
-        # collate_fn = Collator()
+        collate_fn = Collator()
 
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
-                                       num_workers=8)
+                                       shuffle=True,
+                                       num_workers=8,
+                                       collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
-                                     num_workers=8)
+                                     shuffle=False,
+                                     num_workers=8,
+                                     collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
-                                      batch_size=1,
-                                      num_workers=8)
+                                      batch_size=args['batch_size'],
+                                      shuffle=False,
+                                      num_workers=8,
+                                      collate_fn=collate_fn)
 
     def train_dataloader(self):
         return self.train_loader
@@ -145,7 +175,7 @@ class ABAWDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
   
-    dataset = ABAWDataModule(dataset_folder_path="./dataset/abaw5",
+    dataset = ABAWDataModule(data_dir="./dataset/abaw5",
                              batch_size=2,
                              input_size=224,
                              snippet_size = 30
