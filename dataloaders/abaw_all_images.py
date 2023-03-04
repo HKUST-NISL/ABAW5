@@ -35,7 +35,7 @@ class ABAWDataset(Dataset):
         self.all_image_lists = []
         self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*')[:10]:
+        for data_file in glob.glob(data_path + '/*'):
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -104,15 +104,15 @@ class ABAWDataModule(pl.LightningDataModule):
 
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
-                                       num_workers=8,
+                                       num_workers=10,
                                        collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
-                                     num_workers=8,
+                                     num_workers=10,
                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=1,
-                                      num_workers=8,
+                                      num_workers=10,
                                       collate_fn=collate_fn)
 
     def train_dataloader(self):
