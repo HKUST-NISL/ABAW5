@@ -12,6 +12,7 @@ from tqdm import tqdm
 from dataloaders.sampling_strategy import SamplingStrategy
 import torch
 import os
+from .abaw_snippet import create_transform
 
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
@@ -22,6 +23,7 @@ class ABAWDataset(Dataset):
         '''
         #self.imgRandomLen = 10 #for the time being
         self.sampling = SamplingStrategy()
+        self.transform = create_transform(args['input_image_size'])
         dataset_folder_path = args['dataset_folder_path']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
@@ -66,21 +68,20 @@ class ABAWDataset(Dataset):
         self.args = args
         self.data_total_length = len(self.all_image_lists)
 
-        print('%s: %d' % (indexList[trainIndex], self.data_total_length))
+        print('Dataset size %s: %d' % (indexList[trainIndex], self.data_total_length))
 
     def __getitem__(self, index):
         data = {}
         image_entry = self.all_image_lists[index]
         image_path = image_entry['path']
         vid_name = image_entry['vid']
-
         video_entry = self.video_dict[vid_name]
-    
-        image = cv2.imread(image_path)
-        image = cv2.resize(image, (self.input_image_size, self.input_image_size))
-        resized_image = image.transpose(2, 0, 1)
+        #image = cv2.imread(image_path)
+        #image = cv2.resize(image, (self.input_image_size, self.input_image_size))
+        #resized_image = image.transpose(2, 0, 1)
         data['vid'] = vid_name
-        data['images'] = (torch.from_numpy(resized_image.astype(np.float32)) - 128 )/ 255
+        data['imagePath'] = image_path.split('/')[-1][:-4]
+        data['image'] = self.transform(Image.open(image_path))
         data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
@@ -136,10 +137,11 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['image'] = torch.stack([x['image'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
-        # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
+        batch_x['vid'] = [x['vid'] for x in data]
+        batch_x['imagePath'] = [x['imagePath'] for x in data]
         batch_y = torch.stack([x['intensity'] for x in data])
         return batch_x, batch_y
 
@@ -159,7 +161,7 @@ if __name__ == '__main__':
                               shuffle=True)
     for batch in train_loader:
         print(batch)'''
-    dataset = ABAWDataModule(dataset_folder_path="./dataset/abaw5",
+    dataset = ABAWDataModule(dataset_folder_path="./dataset/",
                              batch_size=32,
                              input_image_size=299,
                              )
