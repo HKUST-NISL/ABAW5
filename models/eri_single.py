@@ -76,11 +76,11 @@ class ERI_single(LightningModule):
 
     def validation_epoch_end(self, validation_step_outputs):
 
-        preds = torch.stack([data['val_preds'] for data in validation_step_outputs])
-        labels = torch.stack([data['val_labels'] for data in validation_step_outputs])
+        preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
+        labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
 
-        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
-        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
+        #preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        #labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
 
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
@@ -92,7 +92,7 @@ class ERI_single(LightningModule):
 
         self.log('val_apcc', apcc, on_epoch=True)
         result = {"val_apcc": apcc}
-        # print(result)
+        print(result)
         return result
 
     def test_step(self, batch, batch_idx):
