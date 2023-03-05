@@ -11,12 +11,12 @@ from pytorch_lightning.callbacks import RichProgressBar
 
 def load_callbacks():
     callbacks = []
-    # callbacks.append(plc.EarlyStopping(
-    #     monitor='val_apcc',
-    #     mode='max',
-    #     patience=10,
-    #     min_delta=0.001
-    # ))
+    callbacks.append(plc.EarlyStopping(
+        monitor='val_apcc',
+        mode='max',
+        patience=10,
+        min_delta=0.001
+    ))
 
     callbacks.append(plc.ModelCheckpoint(
         monitor='val_apcc',

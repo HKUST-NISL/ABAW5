@@ -21,7 +21,7 @@ class ERI_single(LightningModule):
         self.isLoadFeature = args['load_feature']
 
         self.linear1 = nn.Linear(272, 256)
-        self.linear1 = nn.Linear(258, 64)
+        self.linear2 = nn.Linear(256, 64)
         self.head = nn.Linear(64, 7, bias=False)
 
     def forward(self, x):
@@ -47,7 +47,7 @@ class ERI_single(LightningModule):
 
     def _calculate_loss(self, batch, mode="train"):
         data, labels = batch
-        imgs = data['images'].to(self.device)
+        imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
         # loss = F.mse_loss(preds, labels)
