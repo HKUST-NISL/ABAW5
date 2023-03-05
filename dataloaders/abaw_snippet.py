@@ -139,7 +139,7 @@ class ABAWDataset(Dataset):
         return [len(sent) for sent in sents]
 
 
-class ABAWDataModule(pl.LightningDataModule):
+class ABAWDataModule_snippet(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
         train_set = ABAWDataset(0, **args)

@@ -3,8 +3,10 @@ from argparse import ArgumentParser
 from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
-from models.eri import ERI
-from dataloaders.abaw_snippet import ABAWDataModule
+from models.eri_seq import ERI
+from models.eri_single import ERI_single
+from dataloaders.abaw_snippet import ABAWDataModule_snippet
+from dataloaders.abaw_all_images import ABAWDataModule_all_images
 from pytorch_lightning.callbacks import RichProgressBar
 
 def load_callbacks():
@@ -37,7 +39,10 @@ def main(args):
 
     if args.trainer_name == 'eri':
         model = ERI(**vars(args))#.cuda()
-        data_module = ABAWDataModule(**vars(args))
+        data_module = ABAWDataModule_snippet(**vars(args))
+    elif args.trainer_name == 'eri_single':
+        model = ERI_single(**vars(args))#.cuda()
+        data_module = ABAWDataModule_all_images(**vars(args))
     else:
         print('Invalid model')
 
@@ -71,11 +76,11 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     # Basic Training Control
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--num_workers', default=8, type=int)
+    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
-    parser.add_argument('-gpus', default='1', type=str)
+    parser.add_argument('-gpus', default='0', type=str)
 
     parser.add_argument('--grad_accumulate', type=int, default=1)
     parser.add_argument('--clip_val', default=1.0, type=float)
@@ -91,17 +96,20 @@ if __name__ == '__main__':
 
     # Restart Control
     parser.add_argument('--checkpoint', default='None', type=str)
+    parser.add_argument('--pretrained', default='pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
 
     # Training Info
     parser.add_argument('--train', default='True', type=str)
-    parser.add_argument('--data_dir', default='./dataset/abaw5', type=str)
-    parser.add_argument('--pretrained', default='pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
+    parser.add_argument('--data_dir', default='./dataset/', type=str)
+
     parser.add_argument('--input_size', default=299, type=int)
     parser.add_argument('--snippet_size', default=30, type=int)
     parser.add_argument('--sample_times', default=5, type=int)
 
-    parser.add_argument('--trainer_name', default='eri', type=str)
+    parser.add_argument('--trainer_name', default='eri_single', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
+    parser.add_argument('--load_feature', default='True', type=str)
+
     parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)
     parser.add_argument('--no_augment', action='store_true')

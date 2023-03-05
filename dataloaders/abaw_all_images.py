@@ -12,7 +12,7 @@ from tqdm import tqdm
 from dataloaders.sampling_strategy import SamplingStrategy
 import torch
 import os
-from .abaw_snippet import create_transform
+from dataloaders.abaw_snippet import create_transform
 
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
@@ -23,19 +23,20 @@ class ABAWDataset(Dataset):
         '''
         #self.imgRandomLen = 10 #for the time being
         self.sampling = SamplingStrategy()
-        self.transform = create_transform(args['input_image_size'])
-        dataset_folder_path = args['dataset_folder_path']
+        self.input_image_size = args['input_size']
+        self.transform = create_transform(self.input_image_size)
+        dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
+        self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
 
-        self.input_image_size = args['input_image_size']
         self.all_image_lists = []
         self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*')[:10]:
+        for data_file in glob.glob(data_path + '/*'):
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -81,7 +82,11 @@ class ABAWDataset(Dataset):
         #resized_image = image.transpose(2, 0, 1)
         data['vid'] = vid_name
         data['imagePath'] = image_path.split('/')[-1][:-4]
-        data['image'] = self.transform(Image.open(image_path))
+        if self.args['load_feature'] == 'True':
+            featurePath = self.data_path_feature + '/' + vid_name + '/' + data['imagePath'] + '.npy'
+            data['image'] = torch.from_numpy(np.load(featurePath))
+        else:
+            data['image'] = self.transform(Image.open(image_path))
         data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
@@ -94,7 +99,7 @@ class ABAWDataset(Dataset):
         return [len(sent) for sent in sents]
 
 
-class ABAWDataModule(pl.LightningDataModule):
+class ABAWDataModule_all_images(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
         train_set = ABAWDataset(0, **args)
@@ -164,6 +169,7 @@ if __name__ == '__main__':
     dataset = ABAWDataModule(dataset_folder_path="./dataset/",
                              batch_size=32,
                              input_image_size=299,
+                             load_feature='True'
                              )
     # pbar = tqdm(len(dataset.train_loader))
     for batch in tqdm(dataset.val_loader):

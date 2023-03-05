@@ -9,8 +9,9 @@ if __name__ == '__main__':
     dataset_path = "./dataset/"
     ckpt_path = ''
     net = SMMNet()
-    ckpt = torch.load(ckpt_path)['state_dict']
-    net.load_state_dict(ckpt)
+    print('model not loaded')
+    #ckpt = torch.load(ckpt_path)['state_dict']
+    #net.load_state_dict(ckpt)
     dataset = ABAWDataModule(dataset_folder_path=dataset_path,
                              batch_size=64,
                              input_image_size=299,
@@ -33,7 +34,7 @@ if __name__ == '__main__':
             final_dir = folder_dir + '/' + imagePath[i]
             np.save(final_dir, feature)
 
-    saving_dir = dataset_path + 'val/features/'
+    '''saving_dir = dataset_path + 'val/features/'
     if not os.path.exists(saving_dir):
         os.mkdir(saving_dir)
     for batch in tqdm(dataset.val_loader):
@@ -49,4 +50,4 @@ if __name__ == '__main__':
             if not os.path.exists(folder_dir):
                 os.mkdir(folder_dir)
             final_dir = folder_dir + '/' + imagePath[i]
-            np.save(final_dir, feature)
+            np.save(final_dir, feature)'''

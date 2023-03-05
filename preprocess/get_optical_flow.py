@@ -137,12 +137,22 @@ def compareDlibAndOpenface():
         y = shape.part(n).y
         ldmk_dlib.append((x, y))
 
-    df = pd.read_csv("dataset/train/aligned/02127/02127.csv",dtype = {0:str}, nrows=1) #['x_0':'y_67']
+    '''df = pd.read_csv("dataset/train/aligned/02127/02127.csv",dtype = {0:str}, nrows=1) #['x_0':'y_67']
     # todo: check if it's all 0
     idx1 = df.columns.get_loc("x_0")
     idx2 = df.columns.get_loc("y_67")
     ldmk_openface = df.iloc[0, idx1:(idx2+1)].to_numpy().reshape(2, 68)
-    # todo: create a rectangle, same as detect[0]
+    # todo: create a rectangle, same as detect[0]'''
+
+    from feat import Detector
+    detector = Detector(
+        face_model="retinaface",
+        landmark_model="mobilefacenet",
+        au_model='xgb',
+        emotion_model="resmasknet",
+        facepose_model="img2pose",
+    )
+    single_face_prediction = detector.detect_image(imgPath)
     a=1
 
 def testOpticalFlow(img1path, img2path):
@@ -167,6 +177,17 @@ def testOpticalFlow(img1path, img2path):
 
 
 if __name__ == '__main__':
-    compareDlibAndOpenface()
+    imgPath = 'dataset/train/images/02127/frame00000.jpg'
+    from feat import Detector
+    detector = Detector(
+        face_model="retinaface",
+        landmark_model="mobilefacenet",
+        au_model='xgb',
+        emotion_model="resmasknet",
+        facepose_model="img2pose",
+    )
+    single_face_prediction = detector.detect_image(imgPath)
+    # todo: try PIPNet
+    #compareDlibAndOpenface()
     #testOpticalFlow('/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
     #                '/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')
