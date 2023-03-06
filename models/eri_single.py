@@ -3,6 +3,8 @@ import torch.optim as optim
 from pytorch_lightning import LightningModule
 from torch import nn
 import torch.nn.functional as F
+import numpy as np
+from scipy.stats import pearsonr
 
 class ERI_single(LightningModule):
     def __init__(self, **args):
@@ -50,7 +52,7 @@ class ERI_single(LightningModule):
         imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        # loss = F.mse_loss(preds, labels)
+        # loss = F.mse_loss(preds, labels) # todo:
         loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
         return loss
@@ -79,20 +81,25 @@ class ERI_single(LightningModule):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
 
-        #preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
-        #labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
-
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
               (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5
-
         apcc = torch.mean(pcc)
 
+        pcc2 = []
+        preds = preds.cpu().detach().numpy()
+        labels = labels.cpu().detach().numpy()
+        for i in range(7):
+            res = pearsonr(preds[:,i], labels[:,i]).statistic
+            pcc2.append(res)
+        apcc2 = np.mean(pcc2) # todo: add abs?
+
         self.log('val_apcc', apcc, on_epoch=True)
-        result = {"val_apcc": apcc}
+        result = {"val_apcc": apcc, 'val_apcc2': apcc2}
         print(result)
+        print(pcc2)
         return result
 
     def test_step(self, batch, batch_idx):

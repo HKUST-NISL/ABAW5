@@ -115,7 +115,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_augment', action='store_true')
     parser.add_argument('--log_dir', default='experiments', type=str)
     parser.add_argument('--log_name', default='eri', type=str)
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=1)
 
     # Model Hyperparameters
     # TODO: add

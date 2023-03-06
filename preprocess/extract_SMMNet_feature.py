@@ -1,6 +1,6 @@
 from models.smm_net import SMMNet
 import torch
-from dataloaders.abaw_all_images import ABAWDataModule
+from dataloaders.abaw_all_images import ABAWDataModule_all_images
 from tqdm import tqdm
 import numpy as np
 import os

@@ -36,7 +36,7 @@ class ABAWDataset(Dataset):
         self.all_image_lists = []
         self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*')[:3]: #todo: change back
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
