@@ -52,17 +52,16 @@ class ERI_single(LightningModule):
         imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        # loss = F.mse_loss(preds, labels) # todo:
+        # loss = F.mse_loss(preds, labels)
         loss = torch.mean(torch.abs(preds - labels))
+        # loss = self.pcc(preds, labels)
         # print(loss)
         return loss
 
     def training_step(self, batch, batch_idx):
         loss = self._calculate_loss(batch, mode="train")
-
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         self.log("train_loss", loss)
-
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -76,30 +75,23 @@ class ERI_single(LightningModule):
                   "val_labels": labels}
         return result
 
-    def validation_epoch_end(self, validation_step_outputs):
-
-        preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
-        labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
-
+    def pcc(self, preds, labels):
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
               (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5
         apcc = torch.mean(pcc)
+        return apcc
 
-        pcc2 = []
-        preds = preds.cpu().detach().numpy()
-        labels = labels.cpu().detach().numpy()
-        for i in range(7):
-            res = pearsonr(preds[:,i], labels[:,i]).statistic
-            pcc2.append(res)
-        apcc2 = np.mean(pcc2) # todo: add abs?
+    def validation_epoch_end(self, validation_step_outputs):
+        preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
+        labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
+        apcc = self.pcc(preds, labels)
 
         self.log('val_apcc', apcc, on_epoch=True)
-        result = {"val_apcc": apcc, 'val_apcc2': apcc2}
-        print(result)
-        print(pcc2)
+        result = {"val_apcc": apcc}
+        print(apcc)
         return result
 
     def test_step(self, batch, batch_idx):
