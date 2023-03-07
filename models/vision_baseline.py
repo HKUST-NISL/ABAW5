@@ -5,7 +5,6 @@ from torchvision.models import resnet50
 class Res50(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-
         net = resnet50(pretrained=True)
         # need vggface2 pretrained model
         self.backbone = nn.Sequential(*list(net.children())[:-1])

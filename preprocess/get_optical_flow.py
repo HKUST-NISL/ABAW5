@@ -21,75 +21,88 @@ def computeStrain(u, v):
 
 
 def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow,
-           gpu_frame, gpu_frame2):
+           gpu_frame, gpu_frame2, useGpu, ld):
     OFF_video = []
     for img_count in range(final_images.shape[0] - k):
         img1 = final_images[img_count]
         img2 = final_images[img_count + k]
-        gpu_frame.upload(img1)
-        gpu_frame2.upload(img2)
         if (img_count == 0):
             reference_img = img1
-            detect = face_detector(reference_img, 1)
+            #detect = face_detector(reference_img, 1)
+            num_of_face = ld.check_faces(reference_img)
             next_img = 0  # Loop through the frames until all the landmark is detected
-            while (len(detect) == 0):
+            while (num_of_face == 0):
                 next_img += 1
                 reference_img = final_images[img_count + next_img]
-                detect = face_detector(reference_img, 1)
-            shape = face_pose_predictor(reference_img, detect[0])
+                num_of_face = ld.check_faces(reference_img)
+            #shape = face_pose_predictor(reference_img, detect[0])
+            shape = ld.get_landmarks(reference_img)
 
             # Left Eye
-            x11 = max(shape.part(36).x - 15, 0)
-            y11 = shape.part(36).y
-            x12 = shape.part(37).x
-            y12 = max(shape.part(37).y - 15, 0)
-            x13 = shape.part(38).x
-            y13 = max(shape.part(38).y - 15, 0)
-            x14 = min(shape.part(39).x + 15, 128)
-            y14 = shape.part(39).y
-            x15 = shape.part(40).x
-            y15 = min(shape.part(40).y + 15, 128)
-            x16 = shape.part(41).x
-            y16 = min(shape.part(41).y + 15, 128)
+            x11 = max(shape[36][0] - 15, 0) #max(shape.part(36).x - 15, 0)
+            y11 = shape[36][1]
+            x12 = shape[37][0]
+            y12 = max(shape[37][1] - 15, 0)
+            x13 = shape[38][0]
+            y13 = max(shape[38][1] - 15, 0)
+            x14 = min(shape[39][0] + 15, 128)
+            y14 = shape[39][1]
+            x15 = shape[40][0]
+            y15 = min(shape[40][1] + 15, 128)
+            x16 = shape[41][0]
+            y16 = min(shape[41][1] + 15, 128)
 
             # Right Eye
-            x21 = max(shape.part(42).x - 15, 0)
-            y21 = shape.part(42).y
-            x22 = shape.part(43).x
-            y22 = max(shape.part(43).y - 15, 0)
-            x23 = shape.part(44).x
-            y23 = max(shape.part(44).y - 15, 0)
-            x24 = min(shape.part(45).x + 15, 128)
-            y24 = shape.part(45).y
-            x25 = shape.part(46).x
-            y25 = min(shape.part(46).y + 15, 128)
-            x26 = shape.part(47).x
-            y26 = min(shape.part(47).y + 15, 128)
+            x21 = max(shape[42][0] - 15, 0)
+            y21 = shape[42][1]
+            x22 = shape[43][0]
+            y22 = max(shape[43][1] - 15, 0)
+            x23 = shape[44][0]
+            y23 = max(shape[44][1] - 15, 0)
+            x24 = min(shape[45][0] + 15, 128)
+            y24 = shape[45][1]
+            x25 = shape[46][0]
+            y25 = min(shape[46][1] + 15, 128)
+            x26 = shape[47][0]
+            y26 = min(shape[47][1] + 15, 128)
 
             # ROI 1 (Left Eyebrow)
-            x31 = max(shape.part(17).x - 12, 0)
-            y32 = max(shape.part(19).y - 12, 0)
-            x33 = min(shape.part(21).x + 12, 128)
-            y34 = min(shape.part(41).y + 12, 128)
+            x31 = max(shape[17][0] - 12, 0)
+            y32 = max(shape[19][1] - 12, 0)
+            #x33 = min(shape.part(21).x + 12, 128)
+            y34 = min(shape[41][1] + 12, 128)
 
             # ROI 2 (Right Eyebrow)
-            x41 = max(shape.part(22).x - 12, 0)
-            y42 = max(shape.part(24).y - 12, 0)
-            x43 = min(shape.part(26).x + 12, 128)
-            y44 = min(shape.part(46).y + 12, 128)
+            #x41 = max(shape.part(22).x - 12, 0)
+            y42 = max(shape[24][1] - 12, 0)
+            x43 = min(shape[26][0] + 12, 128)
+            y44 = min(shape[46][1] + 12, 128)
 
             # ROI 3 #Mouth
-            x51 = max(shape.part(60).x - 12, 0)
-            y52 = max(shape.part(50).y - 12, 0)
-            x53 = min(shape.part(64).x + 12, 128)
-            y54 = min(shape.part(57).y + 12, 128)
+            x51 = max(shape[60][0] - 12, 0)
+            y52 = max(shape[50][1] - 12, 0)
+            x53 = min(shape[64][0] + 12, 128)
+            y54 = min(shape[57][1] + 12, 128)
 
             # Nose landmark
-            x61 = shape.part(28).x
-            y61 = shape.part(28).y
+            x61 = shape[28][0]
+            y61 = shape[28][1]
 
-        flow = optical_flow.calc(gpu_frame, gpu_frame2, None)
-        flow = flow.download()
+            '''for i in range(68):
+                x, y = shape[i]
+                cv2.circle(reference_img, (x, y), 1, (0, 0, 255), 2)
+            cv2.imshow('1', reference_img)
+            cv2.waitKey(0)'''
+
+        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        if useGpu:
+            gpu_frame.upload(img1)
+            gpu_frame2.upload(img2)
+            flow = optical_flow.calc(gpu_frame, gpu_frame2, None)
+            flow = flow.download()
+        else:
+            flow = optical_flow.calc(img1, img2, None)
         magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
         u, v = pol2cart(magnitude, angle)
         os = computeStrain(u, v)
@@ -125,35 +138,34 @@ def compareDlibAndOpenface():
     face_detector = dlib.get_frontal_face_detector()
     face_pose_predictor = dlib.shape_predictor(predictor_model)
 
-    imgPath = 'dataset/train/images/02127/frame00000.jpg'
+    imgPath = 'dataset/train/aligned/02770/02770_aligned/frame_det_00_000032.jpg'
     #imgPath = 'dataset/train/aligned/02767/02767_aligned/frame_det_00_000002.jpg'
-    img = cv2.imread(imgPath)
-    detect = face_detector(img, 1)
-    #face = dlib.rectangle(left=0, top=0, right=224, bottom=224)
+    img = cv2.imread(imgPath, 1)
+    img = cv2.resize(img, (128, 128))
+
+    from PIPNet.lib.landmark_detection import LandmarkDetection
+    ld = LandmarkDetection()
+    num_of_face = ld.check_faces(img)
+    ldmk_pipnet = ld.get_landmarks(img)
+
+    #from PIPNet.lib.test import demo_image
+    #ldmk_pipnet = demo_image(imgPath)
+
+    '''detect = face_detector(img, 1)
+    # face = dlib.rectangle(left=0, top=0, right=224, bottom=224)
     shape = face_pose_predictor(img, detect[0])
     ldmk_dlib = []
     for n in range(0, 68):
         x = shape.part(n).x
         y = shape.part(n).y
-        ldmk_dlib.append((x, y))
-
-    '''df = pd.read_csv("dataset/train/aligned/02127/02127.csv",dtype = {0:str}, nrows=1) #['x_0':'y_67']
-    # todo: check if it's all 0
-    idx1 = df.columns.get_loc("x_0")
-    idx2 = df.columns.get_loc("y_67")
-    ldmk_openface = df.iloc[0, idx1:(idx2+1)].to_numpy().reshape(2, 68)
-    # todo: create a rectangle, same as detect[0]'''
-
-    from feat import Detector
-    detector = Detector(
-        face_model="retinaface",
-        landmark_model="mobilefacenet",
-        au_model='xgb',
-        emotion_model="resmasknet",
-        facepose_model="img2pose",
-    )
-    single_face_prediction = detector.detect_image(imgPath)
-    a=1
+        ldmk_dlib.append((x, y))'''
+    #img = cv2.resize(img, (224, 224))
+    for i in range(68):
+        x, y = ldmk_pipnet[i]
+        cv2.circle(img, (x, y), 1, (0, 0, 255), 2)
+    #cv2.imwrite('images/dlib_sample.jpg', img)
+    cv2.imshow('1', img)
+    cv2.waitKey(0)
 
 def testOpticalFlow(img1path, img2path):
     import time
@@ -177,17 +189,6 @@ def testOpticalFlow(img1path, img2path):
 
 
 if __name__ == '__main__':
-    imgPath = 'dataset/train/images/02127/frame00000.jpg'
-    from feat import Detector
-    detector = Detector(
-        face_model="retinaface",
-        landmark_model="mobilefacenet",
-        au_model='xgb',
-        emotion_model="resmasknet",
-        facepose_model="img2pose",
-    )
-    single_face_prediction = detector.detect_image(imgPath)
-    # todo: try PIPNet
-    #compareDlibAndOpenface()
+    compareDlibAndOpenface()
     #testOpticalFlow('/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000001.jpg',
     #                '/data/abaw5/train/aligned/00022/00022_aligned/frame_det_00_000002.jpg')
