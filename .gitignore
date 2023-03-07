@@ -9,3 +9,4 @@
 lightning_logs/*
 /pretrained
 PIPNet/*
+VGGFace2-pytorch/*
