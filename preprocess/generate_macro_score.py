@@ -3,7 +3,7 @@ import os
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import warnings
 warnings.filterwarnings("ignore")
-
+import keras
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow as tf
@@ -19,8 +19,14 @@ from scipy.signal import find_peaks
 random.seed(1)
 import natsort
 from tqdm import tqdm
+import sys
+sys.path.insert(0, '..')
 from PIPNet.lib.landmark_detection import LandmarkDetection
-
+'''import tensorflow as tf 
+from keras.backend.tensorflow_backend import set_session 
+config = tf.ConfigProto() 
+config.gpu_options.per_process_gpu_memory_fraction = 0.3 
+set_session(tf.Session(config=config))'''
 
 def spotting(result, k, p):
     score_plot = np.array(result)
@@ -125,20 +131,20 @@ def testing(model_path, data_path, save, batch, useGpu):
             image = cv2.resize(image, (128, 128))
             images.append(image)
         images = np.stack(images)
-        #try:
-        flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
+        try:
+            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
                               gpu_frame, gpu_frame2, useGpu, ld) # 44, 42, 42, 3
-        y = np.ones((images.shape[0]))
-        result = model.predict_generator(
-            generator(flow_vectors, y, batch),
-            steps=int(len(flow_vectors) / batch),
-            verbose=0
-        )
-        del images, flow_vectors, y
-        '''except:
+            y = np.ones((images.shape[0]))
+            result = model.predict_generator(
+                generator(flow_vectors, y, batch),
+                steps=int(len(flow_vectors) / batch),
+                verbose=0
+            )
+            del images, flow_vectors, y
+        except:
             print('Error when processing ', dir_sub)
             del images
-            continue'''
+            continue
         if save:
             np.save(save_path+'/'+folder, result)
             del result
@@ -153,9 +159,9 @@ def plot(path):
 
 if __name__ == '__main__':
     testing('./dataset/MaE_model/s1.hdf5',
-            'dataset/val/',
-            save=True, batch=64, useGpu=False)
+            '/data/abaw5/val/',
+            save=True, batch=30, useGpu=True)
     testing('./dataset/MaE_model/s1.hdf5',
             '/data/abaw5/train/',
-            save=True, batch=64)
+            save=True, batch=30, useGpu=True)
     #plot('dataset/train/MaE_score/08719.npy')

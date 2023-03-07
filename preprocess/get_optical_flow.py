@@ -31,7 +31,7 @@ def get_of(final_images, k, face_pose_predictor, face_detector, optical_flow,
             #detect = face_detector(reference_img, 1)
             num_of_face = ld.check_faces(reference_img)
             next_img = 0  # Loop through the frames until all the landmark is detected
-            while (num_of_face == 0):
+            while (num_of_face == 0) and (img_count+next_img)<len(final_images)-1:
                 next_img += 1
                 reference_img = final_images[img_count + next_img]
                 num_of_face = ld.check_faces(reference_img)
