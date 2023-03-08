@@ -36,12 +36,14 @@ class SamplingStrategy:
             length = len(image_paths)  # 144
             vid = image_paths[0].split('/')[-3]
             macro_score_path = self.data_dir + '/' + vid + '.npy'
-            print('macro score path', macro_score_path)
             try:
                 macro_score = np.load(macro_score_path)  # 126, 1
+                assert macro_score.shape[0] > snippet_size
             except:
                 macro_score = np.zeros(length)
-            print('macro score length', macro_score.shape)
+            if macro_score.shape[0] == snippet_size:
+                return image_paths
+
             # peak detection
             peak = peakDetection(macro_score, k=k, p=0)[0]
             sampled_paths = image_paths[peak:(peak+2*k)]

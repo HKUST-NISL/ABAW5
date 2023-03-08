@@ -116,7 +116,6 @@ class ABAWDataset(Dataset):
         image_paths = self.video_dict[vid_name]['image_paths']
 
         video_entry = self.video_dict[vid_name]
-        print('image path length: ', len(image_paths))
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
         assert len(sel_paths) == self.snippet_size
         inputs = []
