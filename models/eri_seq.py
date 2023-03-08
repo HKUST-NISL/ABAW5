@@ -31,18 +31,18 @@ class ERI(LightningModule):
 
         self.pretrained = args['pretrained']
         self.model = getattr(models, args['model_name'])()
-        ckpt = torch.load(self.pretrained)['state_dict']
+        ckpt = torch.load(self.pretrained, map_location=torch.device('cpu'))['state_dict']
         self.model.load_state_dict(ckpt)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
         self.head = nn.Linear(self.model.out_c, 7, bias=False)
     
     def forward(self, x):
-        b, n, c, h, w = x.shape
+        b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
         x = self.model(x.view(b*n, c, h, w))
         x = self.transformer(x.view(b, n, -1))
         x = torch.mean(x, dim=1)
-        x = torch.sigmoid(self.head(x))
+        x = torch.sigmoid(self.head(x)) # 4, 7
         return x
 
     def configure_optimizers(self):

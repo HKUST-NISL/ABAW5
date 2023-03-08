@@ -121,8 +121,8 @@ def testing(model_path, data_path, save, batch, useGpu):
     for i in tqdm(range(len(files))):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
-        if folder in already_saved:
-            continue
+        #if folder in already_saved:
+        #    continue
         
         images = []
         image_path = dir_sub + '/' + folder + '_aligned'
@@ -159,9 +159,9 @@ def plot(path):
 
 if __name__ == '__main__':
     testing('./dataset/MaE_model/s1.hdf5',
-            '/data/abaw5/val/',
-            save=True, batch=30, useGpu=True)
-    testing('./dataset/MaE_model/s1.hdf5',
+            './dataset/val/',
+            save=True, batch=30, useGpu=False)
+    '''testing('./dataset/MaE_model/s1.hdf5',
             '/data/abaw5/train/',
-            save=True, batch=30, useGpu=True)
+            save=True, batch=30, useGpu=True)'''
     #plot('dataset/train/MaE_score/08719.npy')
