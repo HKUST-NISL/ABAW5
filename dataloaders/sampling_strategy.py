@@ -27,12 +27,12 @@ class SamplingStrategy:
     def __init__(self, dataset_folder_path, sampling_choice=1):
         self.sampling_choice = sampling_choice
         self.data_dir = dataset_folder_path
-        self.k = 15 # todo
 
     def get_sampled_paths(self, image_paths, snippet_size):
         if self.sampling_choice == 1:
             sampled_paths = np.random.choice(image_paths, snippet_size, replace=False)
         elif self.sampling_choice == 2:
+            k = int(snippet_size/2)
             length = len(image_paths)  # 144
             vid = image_paths[0].split('/')[-3]
             macro_score_path = self.data_dir + '/' + vid + '.npy'
@@ -41,6 +41,6 @@ class SamplingStrategy:
             except:
                 macro_score = np.zeros(length)
             # peak detection
-            peak = peakDetection(macro_score, k=self.k, p=0)[0]
-            sampled_paths = image_paths[peak:(peak+2*self.k)]
+            peak = peakDetection(macro_score, k=k, p=0)[0]
+            sampled_paths = image_paths[peak:(peak+2*k)]
         return sampled_paths

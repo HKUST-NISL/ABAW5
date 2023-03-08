@@ -103,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', default='./dataset/', type=str)
 
     parser.add_argument('--input_size', default=299, type=int)
-    parser.add_argument('--snippet_size', default=40, type=int)
+    parser.add_argument('--snippet_size', default=30, type=int)
     parser.add_argument('--sample_times', default=1, type=int)
     parser.add_argument('--sampling_strategy', default=2, type=int)
 
