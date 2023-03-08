@@ -121,8 +121,10 @@ def testing(model_path, data_path, save, batch, useGpu):
     for i in tqdm(range(len(files))):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
-        #if folder in already_saved:
-        #    continue
+        if folder in already_saved:
+            continue
+            # todo: check the shape, and generator, continue the rest, train with the features,
+            # todo: compare with VGGFace,
         
         images = []
         image_path = dir_sub + '/' + folder + '_aligned'

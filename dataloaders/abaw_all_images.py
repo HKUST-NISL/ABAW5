@@ -21,8 +21,6 @@ class ABAWDataset(Dataset):
         :param trainIndex: 0=train, 1=val, 2=test
         :returns country is 0 if US, 1 if SA
         '''
-        #self.imgRandomLen = 10 #for the time being
-        self.sampling = SamplingStrategy()
         self.input_image_size = args['input_size']
         self.transform = create_transform(self.input_image_size)
         dataset_folder_path = args['data_dir']
@@ -36,7 +34,7 @@ class ABAWDataset(Dataset):
         self.all_image_lists = []
         self.video_dict = {}
 
-        for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*')[:2]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
