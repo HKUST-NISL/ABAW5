@@ -27,7 +27,7 @@ class SamplingStrategy:
     def __init__(self, dataset_folder_path, sampling_choice=1):
         self.sampling_choice = sampling_choice
         self.data_dir = dataset_folder_path
-        self.k = 20
+        self.k = 15 # todo
 
     def get_sampled_paths(self, image_paths, snippet_size):
         if self.sampling_choice == 1:

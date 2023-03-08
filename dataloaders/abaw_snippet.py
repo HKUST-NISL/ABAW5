@@ -55,7 +55,7 @@ class ABAWDataset(Dataset):
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
-        self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_choice'])
+        self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_strategy'])
         df = pd.read_csv(data_info_path)
 
         self.snippet_size = args['snippet_size']
@@ -68,7 +68,7 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
         # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:2]:
+        for data_file in glob.glob(data_path + '/*')[:4000]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]

@@ -65,8 +65,8 @@ class ERI(LightningModule):
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        # loss = F.mse_loss(preds, labels)
-        loss = torch.mean(torch.abs(preds - labels))
+        loss = F.mse_loss(preds, labels)
+        #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
         return loss
 
@@ -109,7 +109,7 @@ class ERI(LightningModule):
 
         self.log('val_apcc', apcc, on_epoch=True)
         result = {"val_apcc": apcc}
-        # print(result)
+        print(result)
         return result
 
     def test_step(self, batch, batch_idx):
