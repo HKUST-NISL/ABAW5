@@ -39,8 +39,10 @@ class Collator(object):
         batch_x['images'] = torch.stack([x['images'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
+        batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
+
         return batch_x, batch_y
 
 
@@ -70,7 +72,7 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
         # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:300]:
+        for data_file in glob.glob(data_path + '/*')[:100]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -103,9 +105,10 @@ class ABAWDataset(Dataset):
                 self.all_image_lists.append(this_image)
 
         self.args = args
+
         self.vid_list = self.vid_list * self.sample_times
-        # if trainIndex > 0:
-        #     self.vid_list = self.vid_list * self.sample_times
+        # if trainIndex == 0:
+            # self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
         print('%s: videos: %d images: %d' % (indexList[trainIndex], len(self.vid_list), len(self.all_image_lists)))
@@ -128,8 +131,19 @@ class ABAWDataset(Dataset):
         
         data['vid'] = vid_name
         data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
+
+        age = int(video_entry['age']) - 15
+        if age > 34: age = 49
+        if age < 0: age = 0
+        age_bin = age // 5
+        age_con = torch.zeros((8))
+        age_con[age_bin] = 1
+        age_con[7] = int(video_entry['country'])
+        data['age_con'] = age_con
+        
         return data
 
     def __len__(self):
@@ -178,11 +192,12 @@ if __name__ == '__main__':
     dataset = ABAWDataModule(data_dir="./dataset/abaw5",
                              batch_size=2,
                              input_size=224,
-                             snippet_size = 30
+                             snippet_size = 30,
+                             sample_times=5,
                              )
 
     for batch in tqdm(dataset.train_loader):
-        pass
+        print(batch[0]['age_con'].shape)
     for batch in tqdm(dataset.val_loader):
         pass
     for batch in tqdm(dataset.test_loader):

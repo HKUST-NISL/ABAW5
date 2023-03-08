@@ -47,7 +47,7 @@ def main(args):
     logger = TensorBoardLogger(save_dir=args.log_dir, name=args.log_name)
 
     trainer = Trainer(deterministic=True,
-                      num_sanity_val_steps=10,
+                      num_sanity_val_steps=2,
                       resume_from_checkpoint=args.checkpoint,
                       logger=logger,
                       gpus=args.gpus,
