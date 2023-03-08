@@ -68,7 +68,7 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
         # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:4000]:
+        for data_file in glob.glob(data_path + '/*')[:4]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -116,7 +116,9 @@ class ABAWDataset(Dataset):
         image_paths = self.video_dict[vid_name]['image_paths']
 
         video_entry = self.video_dict[vid_name]
+        print('image path length: ', len(image_paths))
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
+        assert len(sel_paths) == self.snippet_size
         inputs = []
         for path in sel_paths:
             input = self.transform(Image.open(path)).unsqueeze(0)
@@ -172,18 +174,16 @@ class ABAWDataModule_snippet(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-  
     dataset = ABAWDataModule_snippet(data_dir="./dataset/",
                              batch_size=2,
                              input_size=299,
                              snippet_size=30,
-                             sample_times=5,
-                             sampling_choice=2
+                             sample_times=1,
+                             sampling_strategy=2
                              )
-
     for batch in tqdm(dataset.val_loader):
         pass
-    for batch in tqdm(dataset.val_loader):
+    for batch in tqdm(dataset.train_loader):
         pass
     for batch in tqdm(dataset.test_loader):
         pass
