@@ -7,12 +7,12 @@ from scipy.signal import find_peaks
 
 def peakDetection(score_plot, k, p):
     if score_plot.sum() == 0:
-        return np.random.choice(np.arange(score_plot.shape[0]-k), 1, replace=False)
+        return np.random.choice(np.arange(score_plot.shape[0]-2*k), 1, replace=False)
     else:
         score_plot_agg = score_plot.copy()
         for x in range(len(score_plot[k:-k])):
             score_plot_agg[x + k] = score_plot[x:x + 2 * k].mean()
-        score_plot_agg = score_plot_agg[:-k]
+        score_plot_agg = score_plot_agg[:-2*k]
         threshold = score_plot_agg.mean() + p * (
                 max(score_plot_agg) - score_plot_agg.mean())  # Moilanen threshold technique
         try:
@@ -20,7 +20,7 @@ def peakDetection(score_plot, k, p):
             peak = np.random.choice(peaks, 1, replace=False)
             return peak
         except:
-            return np.random.choice(np.arange(score_plot.shape[0] - k), 1, replace=False)
+            return np.random.choice(np.arange(score_plot.shape[0] - 2*k), 1, replace=False)
 
 
 class SamplingStrategy:
