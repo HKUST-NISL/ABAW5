@@ -28,18 +28,27 @@ class ERI(LightningModule):
         self.gamma = args['lr_decay_rate']
         self.decay_steps = args['lr_decay_steps']
         self.epochs = args['num_epochs']
+        self.args = args
 
-        self.pretrained = args['pretrained']
-        self.model = getattr(models, args['model_name'])()
-        ckpt = torch.load(self.pretrained, map_location=torch.device('cpu'))['state_dict']
-        self.model.load_state_dict(ckpt)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-        self.head = nn.Linear(self.model.out_c, 7, bias=False)
+        if self.args['load_feature'] == 'False':
+            self.pretrained = args['pretrained']
+            self.model = getattr(models, args['model_name'])()
+            ckpt = torch.load(self.pretrained, map_location=torch.device('cpu'))['state_dict']
+            self.model.load_state_dict(ckpt)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.head = nn.Linear(self.model.out_c, 7, bias=False)
+        else:
+            encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.head = nn.Linear(272, 7, bias=False)
     
     def forward(self, x):
-        b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
-        x = self.model(x.view(b*n, c, h, w))
+        if self.args['load_feature'] == 'False':
+            b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
+            x = self.model(x.view(b*n, c, h, w))
+        else:
+            b, n, _ = x.shape
         x = self.transformer(x.view(b, n, -1))
         x = torch.mean(x, dim=1)
         x = torch.sigmoid(self.head(x)) # 4, 7

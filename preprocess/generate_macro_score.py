@@ -92,7 +92,65 @@ def SOFTNet():
     return model
 
 
-def testing(model_path, data_path, save, batch, useGpu):
+def testing_all(model_path, data_path, save, batch, useGpu):
+    predictor_model = "dataset/MaE_model/shape_predictor_68_face_landmarks.dat"
+    face_detector = dlib.get_frontal_face_detector()
+    face_pose_predictor = dlib.shape_predictor(predictor_model)
+    k = 18  # for macro and CASME
+    model = SOFTNet()
+    model.load_weights(model_path)
+    save_path = data_path + '/MaE_score'
+    ld = LandmarkDetection()
+    if useGpu:
+        gpu_frame = cv2.cuda_GpuMat()
+        gpu_frame2 = cv2.cuda_GpuMat()
+    else:
+        gpu_frame = gpu_frame2 = None
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+        already_saved = []
+    else:
+        already_saved = natsort.natsorted(glob.glob(save_path + '/*'))
+        already_saved = [x.split('/')[-1][:-4] for x in already_saved]
+
+    if useGpu:
+        optical_flow = cv2.cuda.OpticalFlowDual_TVL1_create()
+    else:
+        optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
+    files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        if folder in already_saved:
+            continue
+
+        images = []
+        image_path = dir_sub + '/' + folder + '_aligned'
+        for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
+            image = cv2.imread(dir_sub_vid_img, 1)  # 224, 224
+            image = cv2.resize(image, (128, 128))
+            images.append(image)
+        images = np.stack(images)
+        try:
+            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
+                                  gpu_frame, gpu_frame2, useGpu, ld)  # 44, 42, 42, 3
+            y = np.ones((images.shape[0]))
+            result = model.predict_generator(
+                generator(flow_vectors, y, batch),
+                steps=int(len(flow_vectors) / batch),
+                verbose=0
+            )
+            del images, flow_vectors, y
+        except:
+            print('Error when processing ', dir_sub)
+            del images
+            continue
+        if save:
+            np.save(save_path + '/' + folder, result)
+            del result
+
+
+def testing_check(model_path, data_path, save, batch, useGpu):
     predictor_model = "dataset/MaE_model/shape_predictor_68_face_landmarks.dat"
     face_detector = dlib.get_frontal_face_detector()
     face_pose_predictor = dlib.shape_predictor(predictor_model)
@@ -122,34 +180,41 @@ def testing(model_path, data_path, save, batch, useGpu):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
         if folder in already_saved:
-            continue
-            # todo: check the shape, and generator, continue the rest, train with the features,
-            # todo: compare with VGGFace,
-        
-        images = []
-        image_path = dir_sub + '/' + folder + '_aligned'
-        for dir_sub_vid_img in natsort.natsorted(glob.glob(image_path + "/frame*.jpg")):
-            image = cv2.imread(dir_sub_vid_img, 1)  # 224, 224
-            image = cv2.resize(image, (128, 128))
-            images.append(image)
-        images = np.stack(images)
-        try:
-            flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
-                              gpu_frame, gpu_frame2, useGpu, ld) # 44, 42, 42, 3
-            y = np.ones((images.shape[0]))
-            result = model.predict_generator(
-                generator(flow_vectors, y, batch),
-                steps=int(len(flow_vectors) / batch),
-                verbose=0
-            )
-            del images, flow_vectors, y
-        except:
-            print('Error when processing ', dir_sub)
-            del images
-            continue
-        if save:
-            np.save(save_path+'/'+folder, result)
-            del result
+            score_dir = save_path + '/' + folder + '.npy'
+            score = np.load(score_dir)
+            score_len = score.shape[0]
+
+            image_path = dir_sub + '/' + folder + '_aligned'
+            image_folders = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+            images_len = len(image_folders) #397
+            if score_len + k < images_len:
+                # todo: need to check
+                index = images_len - score_len - k
+                image_folders = image_folders[:-index]
+
+                for dir_sub_vid_img in image_folders:
+                    image = cv2.imread(dir_sub_vid_img, 1)  # 224, 224
+                    image = cv2.resize(image, (128, 128))
+                    images.append(image)
+                images = np.stack(images)
+                try:
+                    flow_vectors = get_of(images, k, face_pose_predictor, face_detector, optical_flow,
+                                      gpu_frame, gpu_frame2, useGpu, ld) # 44, 42, 42, 3
+                    y = np.ones((images.shape[0]))
+                    result = model.predict_generator(
+                        generator(flow_vectors, y, 1),
+                        steps=int(len(flow_vectors) / 1),
+                        verbose=0
+                    )
+                    del images, flow_vectors, y
+                except:
+                    print('Error when processing ', dir_sub)
+                    del images
+                    continue
+                result = np.concatenate((score, result), axis=0)
+                if save:
+                    np.save(save_path+'/'+folder, result)
+                    del result
 
 
 def plot(path):
@@ -160,10 +225,10 @@ def plot(path):
 
 
 if __name__ == '__main__':
-    testing('./dataset/MaE_model/s1.hdf5',
+    '''testing_check('./dataset/MaE_model/s1.hdf5',
             './dataset/val/',
+            save=True, batch=30, useGpu=False)'''
+    testing_check('./dataset/MaE_model/s1.hdf5',
+            './dataset/train/',
             save=True, batch=30, useGpu=False)
-    '''testing('./dataset/MaE_model/s1.hdf5',
-            '/data/abaw5/train/',
-            save=True, batch=30, useGpu=True)'''
     #plot('dataset/train/MaE_score/08719.npy')

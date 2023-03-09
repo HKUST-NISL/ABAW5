@@ -58,6 +58,9 @@ class ABAWDataset(Dataset):
         self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_strategy'])
         df = pd.read_csv(data_info_path)
 
+        print('loading SMM features')
+        self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
+
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
@@ -120,8 +123,13 @@ class ABAWDataset(Dataset):
         assert len(sel_paths) == self.snippet_size
         inputs = []
         for path in sel_paths:
-            input = self.transform(Image.open(path)).unsqueeze(0)
-            inputs.append(input)
+            if self.args['load_feature'] == 'True':
+                featurePath = self.data_path_feature + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
+                input = torch.from_numpy(np.load(featurePath)).unsqueeze(0)
+                inputs.append(input)
+            else:
+                input = self.transform(Image.open(path)).unsqueeze(0)
+                inputs.append(input)
 
         data['images'] = torch.cat(inputs, 0)
         
@@ -178,7 +186,8 @@ if __name__ == '__main__':
                              input_size=299,
                              snippet_size=30,
                              sample_times=1,
-                             sampling_strategy=2
+                             sampling_strategy=2,
+                             load_feature='True'
                              )
     for batch in tqdm(dataset.val_loader):
         pass

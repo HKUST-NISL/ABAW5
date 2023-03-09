@@ -52,9 +52,9 @@ class ERI_single(LightningModule):
         imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        # loss = F.mse_loss(preds, labels)
+        loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
-        loss = self.pcc(preds, labels) #todo?
+        #loss = self.pcc(preds, labels)
         # print(loss)
         return loss
 

@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # ckpt = torch.load(ckpt_path)['state_dict']
     # net.load_state_dict(ckpt)
 
-    net = resnet50(include_top=False, num_classes=8631)
+    net = resnet50(include_top=False, num_classes=8631).to(device)
     ckpt_path = 'pretrained/resnet50/resnet50_scratch_weight.pkl'
     with open(ckpt_path, 'rb') as f:
         obj = f.read()
