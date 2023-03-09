@@ -102,8 +102,8 @@ class ERI(LightningModule):
     
     def validation_epoch_end(self, validation_step_outputs):
 
-        preds = torch.stack([data['val_preds'] for data in validation_step_outputs])
-        labels = torch.stack([data['val_labels'] for data in validation_step_outputs])
+        preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
+        labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
 
         preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
         labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
