@@ -1,5 +1,5 @@
 python3 main.py --num_workers 8 \
- -gpus 1 --trainer_name eri_seq --load_feature True  \
+ -gpus 1 --trainer_name eri_seq --load_feature smm  \
  --snippet_size 40 --batch_size 1 --optimizer adam \
   --lr_scheduler step --num_epochs 200  \
   --lr 1e-4 \

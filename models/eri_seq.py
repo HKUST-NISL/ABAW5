@@ -39,9 +39,13 @@ class ERI(LightningModule):
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(self.model.out_c, 7, bias=False)
         else:
-            encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
-            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-            self.head = nn.Linear(272, 7, bias=False)
+            #encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
+            #self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            #self.head = nn.Linear(272, 7, bias=False)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=512, nhead=8)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=8)
+            self.fc1 = nn.Linear(272, 64)
+            self.head = nn.Linear(64, 7)
     
     def forward(self, x):
         if self.args['load_feature'] == 'False':
@@ -51,6 +55,7 @@ class ERI(LightningModule):
             b, n, _ = x.shape
         x = self.transformer(x.view(b, n, -1))
         x = torch.mean(x, dim=1)
+        x = F.relu(self.fc1(x))
         x = torch.sigmoid(self.head(x)) # 4, 7
         return x
 
@@ -80,14 +85,12 @@ class ERI(LightningModule):
         return loss
 
     def training_step(self, batch, batch_idx):
-        # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         loss = self._calculate_loss(batch, mode="train")
-
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         self.log("train_loss", loss)
-        
+        result = {'train_loss': loss}
+        print(result)
         return loss
-
 
     def validation_step(self, batch, batch_idx):
         vid_preds = {}
@@ -96,14 +99,16 @@ class ERI(LightningModule):
         labels = labels.to(self.device)
         with torch.no_grad():
             preds = self(imgs)
+        loss = F.mse_loss(preds, labels)
         result = {"val_preds": preds,
-                  "val_labels": labels}
+                  "val_labels": labels, "val_loss": loss}
         return result
     
     def validation_epoch_end(self, validation_step_outputs):
 
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
+        loss = [data['loss'] for data in validation_step_outputs].mean()
 
         preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
         labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
@@ -117,7 +122,7 @@ class ERI(LightningModule):
         apcc = torch.mean(pcc)
 
         self.log('val_apcc', apcc, on_epoch=True)
-        result = {"val_apcc": apcc}
+        result = {"val_apcc": apcc, "val_loss": loss}
         print(result)
         return result
 
