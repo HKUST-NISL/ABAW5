@@ -94,8 +94,10 @@ class ABAWDataset(Dataset):
 
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
-            # get the indices
-            image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
+            if args['load_feature'] == 'False':
+                image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
+            else:
+                image_paths = natsort.natsorted(glob.glob(self.data_path_feature + '/' + folder + '/*.npy'))
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
