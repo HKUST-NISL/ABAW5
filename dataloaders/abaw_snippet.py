@@ -54,9 +54,11 @@ class ABAWDataset(Dataset):
         :returns country is 0 if US, 1 if SA
         '''
         #self.imgRandomLen = 10 #for the time being
-        self.sampling = SamplingStrategy()
+        # self.sampling = SamplingStrategy()
         dataset_folder_path = args['data_dir']
+        self.data_dir = dataset_folder_path
         indexList = ['train', 'val', 'test']
+        self.set_type = indexList[trainIndex]
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
@@ -65,14 +67,15 @@ class ABAWDataset(Dataset):
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
+        self.features = args['features']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:1000]:
+        for data_file in glob.glob(data_path + '/*'):
+        # for data_file in glob.glob(data_path + '/*')[:1000]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -121,16 +124,31 @@ class ABAWDataset(Dataset):
         image_paths = self.video_dict[vid_name]['image_paths']
 
         video_entry = self.video_dict[vid_name]
-        sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+
+        if self.snippet_size > 0:
+            sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        else:
+            sel_paths = image_paths
+        
         inputs = []
+
         for path in sel_paths:
-            input = self.transform(Image.open(path)).unsqueeze(0)
+
+            if self.features == 'image':
+                input = self.transform(Image.open(path)).unsqueeze(0)
+            elif self.features == 'smm':
+                img_name = os.path.basename(sel_paths[0])[:-4]
+                feat_path = os.path.join(self.data_dir, self.set_type, 'features', vid_name, img_name+'.npy')
+                input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
 
         data['images'] = torch.cat(inputs, 0)
         
         data['vid'] = vid_name
-        data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+        intensity = torch.from_numpy(video_entry['intensity']).float()
+        # norm
+        intensity = (intensity - 0.3652) / 0.3592
+        data['intensity'] = intensity
 
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
@@ -153,7 +171,7 @@ class ABAWDataset(Dataset):
         return [len(sent) for sent in sents]
 
 
-class ABAWDataModule(pl.LightningDataModule):
+class ABAWDataModuleSnippet(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
         train_set = ABAWDataset(0, **args)
@@ -189,7 +207,7 @@ class ABAWDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
   
-    dataset = ABAWDataModule(data_dir="./dataset/abaw5",
+    dataset = ABAWDataModuleSnippet(data_dir="./dataset/abaw5",
                              batch_size=2,
                              input_size=224,
                              snippet_size = 30,

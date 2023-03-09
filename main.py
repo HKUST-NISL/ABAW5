@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
 from models.eri import ERI
-from dataloaders.abaw_snippet import ABAWDataModule
+from dataloaders.abaw_snippet import ABAWDataModuleSnippet
 from pytorch_lightning.callbacks import RichProgressBar
 
 def load_callbacks():
@@ -37,7 +37,7 @@ def main(args):
 
     if args.trainer_name == 'eri':
         model = ERI(**vars(args))#.cuda()
-        data_module = ABAWDataModule(**vars(args))
+        data_module = ABAWDataModuleSnippet(**vars(args))
     else:
         print('Invalid model')
 
@@ -96,9 +96,11 @@ if __name__ == '__main__':
     parser.add_argument('--train', default='True', type=str)
     parser.add_argument('--data_dir', default='./dataset/abaw5', type=str)
     parser.add_argument('--pretrained', default='pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
-    parser.add_argument('--input_size', default=299, type=int)
+    parser.add_argument('--input_size', default=224, type=int)
     parser.add_argument('--snippet_size', default=30, type=int)
     parser.add_argument('--sample_times', default=5, type=int)
+    parser.add_argument('--features', default='smm', type=str) # image, smm, res50
+    parser.add_argument('--sampling_strategy', default=0, type=int)
 
     parser.add_argument('--trainer_name', default='eri', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)

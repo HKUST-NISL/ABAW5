@@ -28,52 +28,45 @@ class ERI(LightningModule):
         self.gamma = args['lr_decay_rate']
         self.decay_steps = args['lr_decay_steps']
         self.epochs = args['num_epochs']
+        self.features = args['features']
 
         self.pretrained_path = args['pretrained']
 
-        self.model = getattr(models, args['model_name'])()
+        if self.features =='image':
+            self.model = getattr(models, args['model_name'])()
 
-        if len(self.pretrained_path) > 1:
-            if '.pkl' in self.pretrained_path:
-                import pickle
-                with open(self.pretrained_path, 'rb') as f:
-                    obj = f.read()
-                ckpt = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
-            else:
-                ckpt = torch.load(self.pretrained_path)
-                if 'state_dict' in ckpt.keys():
-                    ckpt = ckpt['state_dict']
-                # ckpt = torch.load(self.pretrained_path)['state_dict']
+            if len(self.pretrained_path) > 1:
+                if '.pkl' in self.pretrained_path:
+                    import pickle
+                    with open(self.pretrained_path, 'rb') as f:
+                        obj = f.read()
+                    ckpt = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
+                else:
+                    ckpt = torch.load(self.pretrained_path)
+                    if 'state_dict' in ckpt.keys():
+                        ckpt = ckpt['state_dict']
+                    # ckpt = torch.load(self.pretrained_path)['state_dict']
 
-            self.model.load_state_dict(ckpt, strict=False)
+                self.model.load_state_dict(ckpt, strict=False)
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=self.model.out_c, nhead=4)
+            feat_ch = self.model.out_c
+        elif self.features == 'smm':
+            self.model = torch.nn.Identity()
+            feat_ch = 272
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-        n_hidden = 256
+
         self.head = nn.Sequential(
-            nn.Linear(self.model.out_c + 8, 7, bias=True),
-            # nn.ReLU6(inplace=True),
-            # nn.Linear(n_hidden, 7, bias=False)
+            nn.Linear(feat_ch + 8, 7, bias=True),
         )
 
     def configure_optimizers(self):
-        # parameters = self.parameters()
-
-        parameters = []
-        parameters.extend(self.transformer.parameters())
-        parameters.extend(self.head.parameters())
 
         for param in self.model.parameters():
             param.requires_grad = False
 
-        # if self.optim_type == 'adamw':
-        #     optimizer = optim.AdamW(parameters, lr=self.lr)
-        # elif self.optim_type == 'adam':
-        #     optimizer = optim.Adam(parameters, lr=self.lr)
-
         params =[
-            # {'params': self.model.parameters(), 'lr': self.lr * 1.0},
-            # {'params': self.model.parameters(), 'lr': self.lr*0.1},
             {'params': self.transformer.parameters(), 'lr': self.lr},
             {'params': self.head.parameters(), 'lr': self.lr}
         ]
@@ -95,23 +88,20 @@ class ERI(LightningModule):
         return [optimizer], [lr_scheduler]
     
     def forward_model(self, x, age_con):
-        b, n, c, h, w = x.shape
 
-        x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
-        x_mean = torch.mean(x, dim=1, keepdim=True)
-        x = x - x_mean
+        if self.features == 'image':
+            b, n, c, h, w = x.shape
+            x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
+
+        else:
+            b, n, c = x.shape
+
+        # x_mean = torch.mean(x, dim=1, keepdim=True)
+        # x = x - x_mean
         x = self.transformer(x.view(b, n, -1))
         x = torch.mean(x, dim=1)#[0]
         x = torch.cat([x, age_con], dim=1)
         x = torch.sigmoid(self.head(x))
-
-        # x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
-        # # x_mean = torch.mean(x, dim=1, keepdim=True)
-        # # # x = x - x_mean
-        # x = self.transformer(x.view(b, n, -1)) 
-        # x = torch.max(x, dim=1)[0] - torch.mean(x, dim=1)
-        # x = torch.cat([x, age_con], dim=1)
-        # x = torch.sigmoid(self.head(x))
 
         return x
 
@@ -175,6 +165,9 @@ class ERI(LightningModule):
 
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
+
+        preds = preds * 0.3592 + 0.3652
+        labels = labels * 0.3592 + 0.3652
 
         loss = torch.mean(torch.abs(preds - labels))
         self.log('val_loss', loss, on_epoch=True, prog_bar=True)

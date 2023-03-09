@@ -9,7 +9,13 @@
 # --data_dir ~/Data/abaw5_sub
 
 
-python main.py --snippet_size 10 --batch_size 6 --input_size 224 --sample_times 1 \
+# python main.py --snippet_size 10 --batch_size 6 --input_size 224 --sample_times 1 \
+# --optimizer adamw --lr_scheduler cosine --num_epochs 50 --lr 1e-4 \
+# --model_name SMMNet --pretrained pretrained/model-epoch=07-val_total=1.54.ckpt \
+# --data_dir ~/Data/abaw5_sub
+
+
+python main.py --snippet_size 40 --batch_size 64 --sample_times 1 \
 --optimizer adamw --lr_scheduler cosine --num_epochs 50 --lr 1e-4 \
---model_name SMMNet --pretrained pretrained/model-epoch=07-val_total=1.54.ckpt \
---data_dir ~/Data/abaw5_sub
+--data_dir ./dataset/abaw5 \
+--features smm
