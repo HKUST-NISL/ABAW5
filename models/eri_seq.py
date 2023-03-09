@@ -45,6 +45,7 @@ class ERI(LightningModule):
     
     def forward(self, x):
         if self.args['load_feature'] == 'False':
+            x = x.to(self.device)
             b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
             x = self.model(x.view(b*n, c, h, w))
             x = self.transformer(x.view(b, n, -1))
@@ -53,15 +54,15 @@ class ERI(LightningModule):
             return x
         else:
             outputs = []
-            b, n, _ = x.shape
+            b = len(x)
             for i in range(b):
-                input = x[i:(i+1)]
+                input = x[i].to(self.device).unsqueeze(0)
                 input = self.transformer(input)
                 input = torch.mean(input, dim=1)
                 input = torch.sigmoid(self.head(input))
                 outputs.append(input)
-                outputs = torch.cat(outputs, dim=0)
-                return outputs
+            outputs = torch.cat(outputs, dim=0)
+            return outputs
 
     def configure_optimizers(self):
         if self.optim_type == 'adamw':
@@ -80,7 +81,7 @@ class ERI(LightningModule):
     
     def _calculate_loss(self, batch, mode="train"):
         data, labels = batch
-        imgs = data['images'].to(self.device)
+        imgs = data['images'] #.to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
         #loss = F.mse_loss(preds, labels)
