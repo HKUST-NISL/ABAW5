@@ -39,25 +39,29 @@ class ERI(LightningModule):
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(self.model.out_c, 7, bias=False)
         else:
-            #encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
-            #self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-            #self.head = nn.Linear(272, 7, bias=False)
-            encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=512, nhead=8)
-            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=8)
-            self.fc1 = nn.Linear(272, 64)
-            self.head = nn.Linear(64, 7)
+            encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.head = nn.Linear(272, 7, bias=False)
     
     def forward(self, x):
         if self.args['load_feature'] == 'False':
             b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
             x = self.model(x.view(b*n, c, h, w))
+            x = self.transformer(x.view(b, n, -1))
+            x = torch.mean(x, dim=1)
+            x = torch.sigmoid(self.head(x))  # 4, 7
+            return x
         else:
+            outputs = []
             b, n, _ = x.shape
-        x = self.transformer(x.view(b, n, -1))
-        x = torch.mean(x, dim=1)
-        x = F.relu(self.fc1(x))
-        x = torch.sigmoid(self.head(x)) # 4, 7
-        return x
+            for i in range(b):
+                input = x[i:(i+1)]
+                input = self.transformer(input)
+                input = torch.mean(input, dim=1)
+                input = torch.sigmoid(self.head(input))
+                outputs.append(input)
+                outputs = torch.cat(outputs, dim=0)
+                return outputs
 
     def configure_optimizers(self):
         if self.optim_type == 'adamw':
@@ -79,9 +83,10 @@ class ERI(LightningModule):
         imgs = data['images'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        loss = F.mse_loss(preds, labels)
+        #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
+        loss = self.pcc_loss(preds, labels)
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -102,10 +107,24 @@ class ERI(LightningModule):
         labels = labels.to(self.device)
         with torch.no_grad():
             preds = self(imgs)
-        loss = F.mse_loss(preds, labels)
+        #loss = F.mse_loss(preds, labels)
+        loss = self.pcc_loss(preds, labels)
         result = {"val_preds": preds,
                   "val_labels": labels, "val_loss": loss.item()}
         return result
+
+    def pcc_loss(self, preds, labels):
+        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
+
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
+        pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
+              (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (1e-7)
+
+        loss = 1 - torch.mean(pcc)
+        return loss
     
     def validation_epoch_end(self, validation_step_outputs):
 
