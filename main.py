@@ -76,7 +76,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     # Basic Training Control
-    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
@@ -105,11 +105,11 @@ if __name__ == '__main__':
     parser.add_argument('--input_size', default=299, type=int)
     parser.add_argument('--snippet_size', default=30, type=int)
     parser.add_argument('--sample_times', default=1, type=int)
-    parser.add_argument('--sampling_strategy', default=2, type=int)
+    parser.add_argument('--sampling_strategy', default=0, type=int)  # 0: none, 1: random, 2: MaE score
 
     parser.add_argument('--trainer_name', default='eri_seq', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
-    parser.add_argument('--load_feature', default='True', type=str)
+    parser.add_argument('--load_feature', default='smm', type=str) # choices: false, vgg, smm
 
     #parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)

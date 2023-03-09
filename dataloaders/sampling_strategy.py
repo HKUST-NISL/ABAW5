@@ -29,8 +29,13 @@ class SamplingStrategy:
         self.data_dir = dataset_folder_path
 
     def get_sampled_paths(self, image_paths, snippet_size):
+        if self.sampling_choice == 0:
+            return image_paths
         if self.sampling_choice == 1:
-            sampled_paths = np.random.choice(image_paths, snippet_size, replace=False)
+            length = len(image_paths)
+            sampled_index = np.random.choice(np.arange(length), snippet_size, replace=False)
+            sampled_index.sort()
+            sampled_paths = [image_paths[index] for index in sampled_index]
         elif self.sampling_choice == 2:
             k = int(snippet_size/2)
             length = len(image_paths)  # 144

@@ -58,8 +58,12 @@ class ABAWDataset(Dataset):
         self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_strategy'])
         df = pd.read_csv(data_info_path)
 
-        print('loading SMM features')
-        self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
+        if args['load_feature'] == 'smm':
+            print('loading SMM features')
+            self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
+        elif args['load_feature'] == 'vgg':
+            print('loading VGG features')
+            self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
@@ -71,7 +75,7 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
         # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:4]:
+        for data_file in glob.glob(data_path + '/*')[:2]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -120,15 +124,14 @@ class ABAWDataset(Dataset):
 
         video_entry = self.video_dict[vid_name]
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
-        assert len(sel_paths) == self.snippet_size
         inputs = []
         for path in sel_paths:
-            if self.args['load_feature'] == 'True':
-                featurePath = self.data_path_feature + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
-                input = torch.from_numpy(np.load(featurePath)).unsqueeze(0)
+            if self.args['load_feature'] == 'False':
+                input = self.transform(Image.open(path)).unsqueeze(0)
                 inputs.append(input)
             else:
-                input = self.transform(Image.open(path)).unsqueeze(0)
+                featurePath = self.data_path_feature + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
+                input = torch.from_numpy(np.load(featurePath)).unsqueeze(0)
                 inputs.append(input)
 
         data['images'] = torch.cat(inputs, 0)
@@ -186,8 +189,8 @@ if __name__ == '__main__':
                              input_size=299,
                              snippet_size=30,
                              sample_times=1,
-                             sampling_strategy=2,
-                             load_feature='True'
+                             sampling_strategy=1,
+                             load_feature='smm'
                              )
     for batch in tqdm(dataset.val_loader):
         pass
