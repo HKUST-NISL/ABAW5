@@ -47,25 +47,14 @@ class ERI(LightningModule):
 
             self.model.load_state_dict(ckpt, strict=False)
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=self.model.out_c, nhead=4)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
         n_hidden = 256
         self.head = nn.Sequential(
-            nn.Linear(self.model.out_c + 8, n_hidden, bias=False),
-            nn.ReLU6(inplace=True),
-            nn.Linear(n_hidden, 7, bias=False)
+            nn.Linear(self.model.out_c + 8, 7, bias=True),
+            # nn.ReLU6(inplace=True),
+            # nn.Linear(n_hidden, 7, bias=False)
         )
-    
-    def forward_model(self, x, age_con):
-        b, n, c, h, w = x.shape
-
-        x = self.model(x.view(b*n, c, h, w))
-        x = self.transformer(x.view(b, n, -1))
-        x = torch.mean(x, dim=1)
-        x = torch.cat([x, age_con], dim=1)
-        x = torch.sigmoid(self.head(x))
-
-        return x
 
     def configure_optimizers(self):
         # parameters = self.parameters()
@@ -74,8 +63,8 @@ class ERI(LightningModule):
         parameters.extend(self.transformer.parameters())
         parameters.extend(self.head.parameters())
 
-        # for param in self.model.parameters():
-        #     param.requires_grad = False
+        for param in self.model.parameters():
+            param.requires_grad = False
 
         # if self.optim_type == 'adamw':
         #     optimizer = optim.AdamW(parameters, lr=self.lr)
@@ -83,16 +72,19 @@ class ERI(LightningModule):
         #     optimizer = optim.Adam(parameters, lr=self.lr)
 
         params =[
-            {'params': self.model.parameters(), 'lr': self.lr * 1.0},
-            {'params': parameters}
+            # {'params': self.model.parameters(), 'lr': self.lr * 1.0},
+            # {'params': self.model.parameters(), 'lr': self.lr*0.1},
+            {'params': self.transformer.parameters(), 'lr': self.lr},
+            {'params': self.head.parameters(), 'lr': self.lr}
         ]
 
         if self.optim_type == 'adamw':
             optimizer = optim.AdamW(params, lr=self.lr)
         elif self.optim_type == 'adam':
             optimizer = optim.Adam(params, lr=self.lr)
+        elif self.optim_type == 'sgd':
+            optimizer = optim.SGD(params, lr=self.lr, momentum=0.9, weight_decay=0.0)
             
-        
         if self.scheduler_type == 'step':
             lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.decay_steps, gamma=self.gamma)
         elif self.scheduler_type == 'cosine':
@@ -102,16 +94,27 @@ class ERI(LightningModule):
             
         return [optimizer], [lr_scheduler]
     
-    def _calculate_loss(self, batch, mode="train"):
-        data, labels = batch
-        imgs = data['images'].to(self.device)
-        age_con = data['age_con'].to(self.device)
-        labels = labels.to(self.device)
-        preds = self.forward_model(imgs, age_con)
-        # loss = F.mse_loss(preds, labels)
-        loss = torch.mean(torch.abs(preds - labels))
-        # print(loss)
-        return loss
+    def forward_model(self, x, age_con):
+        b, n, c, h, w = x.shape
+
+        x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
+        x_mean = torch.mean(x, dim=1, keepdim=True)
+        x = x - x_mean
+        x = self.transformer(x.view(b, n, -1))
+        x = torch.mean(x, dim=1)#[0]
+        x = torch.cat([x, age_con], dim=1)
+        x = torch.sigmoid(self.head(x))
+
+        # x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
+        # # x_mean = torch.mean(x, dim=1, keepdim=True)
+        # # # x = x - x_mean
+        # x = self.transformer(x.view(b, n, -1)) 
+        # x = torch.max(x, dim=1)[0] - torch.mean(x, dim=1)
+        # x = torch.cat([x, age_con], dim=1)
+        # x = torch.sigmoid(self.head(x))
+
+        return x
+
 
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
@@ -123,7 +126,15 @@ class ERI(LightningModule):
         labels = labels.to(self.device)
         preds = self.forward_model(imgs, age_con)
         # loss = F.mse_loss(preds, labels)
-        loss = torch.mean(torch.abs(preds - labels))
+        # loss = torch.mean(torch.abs(preds - labels))
+
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
+        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
+            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
+        
+        loss = 1 - torch.mean(pcc)
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -139,7 +150,7 @@ class ERI(LightningModule):
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            (torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5
+            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
         
         apcc = torch.mean(pcc)
 
@@ -172,7 +183,7 @@ class ERI(LightningModule):
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            (torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5
+            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
         
         apcc = torch.mean(pcc)
 

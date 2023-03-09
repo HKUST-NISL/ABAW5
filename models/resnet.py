@@ -1,5 +1,6 @@
 import torch.nn as nn
 import math
+import torch
 
 __all__ = ['ResNet', 'resnet50']
 
@@ -150,3 +151,12 @@ def resnet50(**kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
+
+if __name__ == '__main__':
+
+    x = torch.rand(5, 3, 224, 224)
+    net = resnet50()
+
+    y = net(x)
+
+    print(x.shape, y.shape)

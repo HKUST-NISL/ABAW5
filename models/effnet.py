@@ -7,23 +7,20 @@ import torchvision
 import timm
 
 
-class EffNetEmo(nn.Module):
-    def __init__(self, num_classes=8):
+class EffNet(nn.Module):
+    def __init__(self, model_type = 0):
         super().__init__()
-
-        model = timm.create_model('tf_efficientnet_b0_ns', pretrained=False)
-        model.classifier=torch.nn.Identity()
-        model.load_state_dict(torch.load('./pretrained/state_vggface2_enet0_new.pt')) #_new
-        model.classifier=nn.Sequential(nn.Linear(in_features=1280, out_features=num_classes)) #1792 #1280 #1536
-
-        # effnet b2
-        # model = timm.create_model('tf_efficientnet_b2_ns', pretrained=False)
-        # model.classifier=torch.nn.Identity()
-        # model.load_state_dict(torch.load('./models/state_vggface2_enet0_new.pt')) #_new
-        # model.load_state_dict(torch.load('./models/state_vggface2_enet2.pt'))
-        # model.classifier=nn.Sequential(nn.Linear(in_features=1408, out_features=num_classes)) #1792 #1280 #1536
-
-        # model = torch.load('../face-emotion-recognition/models/affectnet_emotions/enet_b2_8.pt')
+        
+        if model_type == 0:
+            model = timm.create_model('tf_efficientnet_b0_ns', pretrained=False)
+            model.classifier = torch.nn.Identity()
+            model.load_state_dict(torch.load('./pretrained/state_vggface2_enet0_new.pt', map_location='cpu')) #_new
+            self.out_c = 1280
+        else:
+            model = timm.create_model('tf_efficientnet_b2_ns', pretrained=False)
+            model.classifier=torch.nn.Identity()
+            model.load_state_dict(torch.load('./pretrained/state_vggface2_enet2.pt', map_location='cpu'))
+            self.out_c = 1408
 
         for param in model.parameters():
             param.requires_grad = True
@@ -39,13 +36,20 @@ class EffNetEmo(nn.Module):
         y = self.model(x)
 
         return y
+    
+
+def effnetb0():
+    return EffNet()
+
+def effnetb2():
+    return EffNet(2)
 
 
 if __name__ == '__main__':
 
-    net = EffNetEmo().cuda()
+    net = effnetb0()#.cuda()
 
-    x = torch.rand(64, 3, 224, 224).cuda()
+    x = torch.rand(64, 3, 224, 224)#.cuda()
 
     y = net(x)
 
