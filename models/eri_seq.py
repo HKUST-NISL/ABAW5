@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 import pandas as pd
 import seaborn as sn
 import torch
@@ -88,9 +88,12 @@ class ERI(LightningModule):
         loss = self._calculate_loss(batch, mode="train")
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         self.log("train_loss", loss)
-        result = {'train_loss': loss}
-        print(result)
-        return loss
+        result = {'loss': loss}
+        return result
+
+    def training_epoch_end(self, training_step_outputs):
+        loss = np.mean([data['loss'].item() for data in training_step_outputs])
+        print('training loss:', loss)
 
     def validation_step(self, batch, batch_idx):
         vid_preds = {}
@@ -101,14 +104,14 @@ class ERI(LightningModule):
             preds = self(imgs)
         loss = F.mse_loss(preds, labels)
         result = {"val_preds": preds,
-                  "val_labels": labels, "val_loss": loss}
+                  "val_labels": labels, "val_loss": loss.item()}
         return result
     
     def validation_epoch_end(self, validation_step_outputs):
 
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
-        loss = [data['loss'] for data in validation_step_outputs].mean()
+        loss = np.mean([data['val_loss'] for data in validation_step_outputs])
 
         preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
         labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
