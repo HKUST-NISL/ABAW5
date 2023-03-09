@@ -104,7 +104,7 @@ class ERI(LightningModule):
     def validation_step(self, batch, batch_idx):
         vid_preds = {}
         data, labels = batch
-        imgs = data['images'].to(self.device)
+        imgs = data['images'] #.to(self.device)
         labels = labels.to(self.device)
         with torch.no_grad():
             preds = self(imgs)

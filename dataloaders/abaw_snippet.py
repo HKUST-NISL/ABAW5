@@ -36,7 +36,7 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['images'] = [x['images'] for x in data] #torch.stack([x['images'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
@@ -74,8 +74,11 @@ class ABAWDataset(Dataset):
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:2]:
+        if args['load_feature'] == 'False':
+            all_data_files = glob.glob(data_path + '/*')
+        else:
+            all_data_files = glob.glob(self.data_path_feature + '/*')
+        for data_file in all_data_files[:2]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -135,7 +138,6 @@ class ABAWDataset(Dataset):
                 inputs.append(input)
 
         data['images'] = torch.cat(inputs, 0)
-        
         data['vid'] = vid_name
         data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
         data['age'] = torch.from_numpy(video_entry['age'])
@@ -160,17 +162,17 @@ class ABAWDataModule_snippet(pl.LightningDataModule):
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
                                        shuffle=True,
-                                       num_workers=8,
+                                       num_workers=args['num_workers'],
                                        collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
                                      shuffle=False,
-                                     num_workers=8,
+                                     num_workers=args['num_workers'],
                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=args['batch_size'],
                                       shuffle=False,
-                                      num_workers=8,
+                                      num_workers=args['num_workers'],
                                       collate_fn=collate_fn)
 
     def train_dataloader(self):
