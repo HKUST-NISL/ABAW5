@@ -143,7 +143,7 @@ class ABAWDataset(Dataset):
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
         # norm
-        intensity = (intensity - 0.3652) / 0.3592
+        #intensity = (intensity - 0.3652) / 0.3592
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])

@@ -22,7 +22,10 @@ class ERI_single(LightningModule):
 
         self.isLoadFeature = args['load_feature']
 
-        self.linear1 = nn.Linear(272, 256)
+        if args['load_feature'] == 'smm':
+            self.linear1 = nn.Linear(272, 256)
+        elif args['load_feature'] == 'vgg':
+            self.linear1 = nn.Linear(2048, 256)
         self.linear2 = nn.Linear(256, 64)
         self.head = nn.Linear(64, 7, bias=False)
 
@@ -52,9 +55,9 @@ class ERI_single(LightningModule):
         imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        loss = F.mse_loss(preds, labels)
+        #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
-        #loss = self.pcc(preds, labels)
+        loss = self.pcc(preds, labels)
         # print(loss)
         return loss
 
@@ -78,9 +81,8 @@ class ERI_single(LightningModule):
     def pcc(self, preds, labels):
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
-
         pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
-              (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5
+              ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5+(1e-7))
         apcc = torch.mean(pcc)
         return apcc
 

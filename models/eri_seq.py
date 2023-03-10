@@ -122,7 +122,7 @@ class ERI(LightningModule):
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
         pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
-              (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (1e-7)
+              ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (1e-7))
 
         loss = 1 - torch.mean(pcc)
         return loss
@@ -131,8 +131,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
-        preds = preds * 0.3592 + 0.3652
-        labels = labels * 0.3592 + 0.3652
+        #preds = preds * 0.3592 + 0.3652
+        #labels = labels * 0.3592 + 0.3652
 
         loss = np.mean([data['val_loss'] for data in validation_step_outputs])
 

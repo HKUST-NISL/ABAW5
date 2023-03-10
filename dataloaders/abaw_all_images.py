@@ -26,8 +26,12 @@ class ABAWDataset(Dataset):
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
-        print('loading VGG features')
-        self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
+        if args['load_feature'] == 'smm':
+            print('loading SMM features')
+            self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
+        elif args['load_feature'] == 'vgg':
+            print('loading VGG features')
+            self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
@@ -81,11 +85,11 @@ class ABAWDataset(Dataset):
         #resized_image = image.transpose(2, 0, 1)
         data['vid'] = vid_name
         data['imagePath'] = image_path.split('/')[-1][:-4]
-        if self.args['load_feature'] == 'True':
+        if self.args['load_feature'] == 'False':
+            data['image'] = self.transform(Image.open(image_path))
+        else:
             featurePath = self.data_path_feature + '/' + vid_name + '/' + data['imagePath'] + '.npy'
             data['image'] = torch.from_numpy(np.load(featurePath))
-        else:
-            data['image'] = self.transform(Image.open(image_path))
         data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
