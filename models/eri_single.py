@@ -57,7 +57,7 @@ class ERI_single(LightningModule):
         preds = self(imgs)
         #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
-        loss = self.pcc(preds, labels)
+        loss = self.pcc_loss(preds, labels)
         # print(loss)
         return loss
 
@@ -65,7 +65,12 @@ class ERI_single(LightningModule):
         loss = self._calculate_loss(batch, mode="train")
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         self.log("train_loss", loss)
-        return loss
+        result = {'loss': loss}
+        return result
+
+    def training_epoch_end(self, training_step_outputs):
+        loss = np.mean([data['loss'].item() for data in training_step_outputs])
+        print('training loss:', loss)
 
     def validation_step(self, batch, batch_idx):
         vid_preds = {}
@@ -78,22 +83,39 @@ class ERI_single(LightningModule):
                   "val_labels": labels}
         return result
 
-    def pcc(self, preds, labels):
+    def pcc_loss(self, preds, labels):
+        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
+
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
         pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
-              ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5+(1e-7))
-        apcc = torch.mean(pcc)
-        return apcc
+              ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (1e-7))
+
+        loss = 1 - torch.mean(pcc)
+        return loss
 
     def validation_epoch_end(self, validation_step_outputs):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
-        apcc = self.pcc(preds, labels)
+
+        loss = np.mean([data['val_loss'] for data in validation_step_outputs])
+
+        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
+
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
+        pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
+              (torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5
+
+        apcc = torch.mean(pcc)
 
         self.log('val_apcc', apcc, on_epoch=True)
-        result = {"val_apcc": apcc}
-        print(apcc)
+        result = {"val_apcc": apcc, "val_loss": loss}
+        print(result)
         return result
 
     def test_step(self, batch, batch_idx):
