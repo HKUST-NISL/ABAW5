@@ -111,15 +111,28 @@ class ERI(LightningModule):
         else:
             b, n, c = x.shape
 
-        x = x.view(b, n, -1).permute(1, 0, 2)
-        x = self.transformer(x, mask=mask).permute(1, 0, 2)
+        x = x.reshape(b, n, -1)
         mask_1d = mask[:b, :, :1]
+        
+        # x_mean = torch.sum(x * mask_1d, dim=1) / torch.sum(mask_1d, dim=1)
+        # x = x - x_mean.unsqueeze(1)
+
+        x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
 
         # print(mask_1d.shape, x.shape)
         x = torch.sum(x * mask_1d, dim=1) / torch.sum(mask_1d, dim=1)
         x = torch.cat([x, age_con], dim=1)
         preds = torch.sigmoid(self.head(x))
         return preds
+    
+    def calculate_apcc(self, preds, labels):
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+
+        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
+            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
+    
+        return torch.mean(pcc)
         
 
     def training_step(self, batch, batch_idx):
@@ -127,7 +140,9 @@ class ERI(LightningModule):
         # loss = self._calculate_loss(batch, mode="train")
         data, labels = batch
         preds = self.forward_model(data)
-        loss = torch.mean(torch.abs(preds - labels))
+
+        # loss = torch.mean(torch.abs(preds - labels))
+        loss = 1 - self.calculate_apcc(preds, labels)
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -139,14 +154,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['train_preds'] for data in training_step_outputs], dim=0)
         labels = torch.cat([data['train_labels'] for data in training_step_outputs], dim=0)
 
-        preds_mean = torch.mean(preds, dim=0, keepdim=True)
-        labels_mean = torch.mean(labels, dim=0, keepdim=True)
-
-        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
+        apcc = self.calculate_apcc(preds, labels)
         
-        apcc = torch.mean(pcc)
-
         self.log('train_apcc', apcc, on_epoch=True, prog_bar=True)
         result = {"train_apcc": apcc}
 
@@ -163,17 +172,11 @@ class ERI(LightningModule):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
 
-        loss = torch.mean(torch.abs(preds - labels))
-        self.log('val_loss', loss, on_epoch=True, prog_bar=True)
+        l1_loss = torch.mean(torch.abs(preds - labels))
+        self.log('val_l1loss', loss, on_epoch=True, prog_bar=True)
 
-        preds_mean = torch.mean(preds, dim=0, keepdim=True)
-        labels_mean = torch.mean(labels, dim=0, keepdim=True)
-
-        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
+        apcc = self.calculate_apcc(preds, labels)
         
-        apcc = torch.mean(pcc)
-
         self.log('val_apcc', apcc, on_epoch=True, prog_bar=True)
         result = {"val_apcc": apcc}
         # print(result)
