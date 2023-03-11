@@ -25,25 +25,21 @@ if __name__ == '__main__':
             obj = f.read()
         weights = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
         net.load_state_dict(weights, strict=False)
-        out_name = 'res50_features'
+        out_name = sys.argv[1]+'_features'
         in_size = 224
     elif sys.argv[1] == 'effnetb0':
         net = effnetb0().to(device)
         ckpt_path = 'pretrained/state_vggface2_enet0_new.pt'
-        with open(ckpt_path, 'rb') as f:
-            obj = f.read()
-        weights = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
-        net.load_state_dict(weights)
-        out_name = 'effnetb0_features'
+        ckpt = torch.load(ckpt_path)
+        net.load_state_dict(ckpt)
+        out_name = sys.argv[1]+'_features'
         in_size = 224
     elif sys.argv[1] == 'effnetb0_aff':
         net = effnetb0().to(device)
         ckpt_path = 'pretrained/effnebb0_affect.pth'
-        with open(ckpt_path, 'rb') as f:
-            obj = f.read()
-        weights = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
-        net.load_state_dict(weights)
-        out_name = 'effnetb0_features'
+        ckpt = torch.load(ckpt_path)
+        net.load_state_dict(ckpt)
+        out_name = sys.argv[1]+'_features'
         in_size = 224
 
     dataset = ABAWDataModule_all_images(data_dir=dataset_path,
