@@ -13,7 +13,7 @@ python main.py --snippet_size 300 --batch_size 32 --input_size 224 --sample_time
 --optimizer adam --lr_scheduler cosine --num_epochs 200 --lr 1e-4 \
 --model_name SMMNet --pretrained pretrained/model-epoch=07-val_total=1.54.ckpt \
 --data_dir ~/Data/abaw5 \
---features smm
+--features image
 
 
 # python main.py --snippet_size 50 --batch_size 128 --sample_times 1 \
