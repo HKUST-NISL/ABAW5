@@ -39,16 +39,24 @@ class ERI(LightningModule):
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(self.model.out_c, 7, bias=False)
         elif self.args['load_feature'] == 'smm':
+            # for first model: US
             encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
-            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-            self.head = nn.Linear(272, 7, bias=False)
+            self.transformer1 = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.head1 = nn.Linear(272, 7, bias=False)
+            if self.args['two_models'] == 'True':
+                # for second model: SA
+                encoder_layer2 = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
+                self.transformer2 = nn.TransformerEncoder(encoder_layer2, num_layers=6)
+                self.head2 = nn.Linear(272, 7, bias=False)
+                self.transformer = [self.transformer1, self.transformer2]
+                self.head = [self.head1, self.head2]
         elif self.args['load_feature'] == 'vgg':
             self.linear1 = nn.Linear(2048, 128)
             self.linear2 = nn.Linear(128, 7)
         else:
             print('load feature should be one of the followings: [False, smm, vgg]')
     
-    def forward(self, x):
+    def forward(self, x, country, age):
         if self.args['load_feature'] == 'False':
             x = x.to(self.device)
             b, n, c, h, w = x.shape # 4, 30, 3, 299, 299
@@ -62,9 +70,15 @@ class ERI(LightningModule):
             b = len(x)
             for i in range(b):
                 input = x[i].to(self.device) #.unsqueeze(0)
-                input = self.transformer(input)
-                input = torch.mean(input, dim=0)
-                input = torch.sigmoid(self.head(input))
+                if self.args['two_models'] == 'False':
+                    input = self.transformer1(input)
+                    input = torch.mean(input, dim=0)
+                    input = self.head1(input)
+                    #input = torch.sigmoid(self.head(input))
+                else:
+                    input = self.transformer[country[i]](input)
+                    input = torch.mean(input, dim=0)
+                    input = self.head[country[i]](input)
                 outputs.append(input)
             outputs = torch.stack(outputs)
             return outputs
@@ -99,8 +113,10 @@ class ERI(LightningModule):
     def _calculate_loss(self, batch, train):
         data, labels = batch
         imgs = data['images'] #.to(self.device)
+        age = data['age'].to(self.device)
+        country = data['country'].to(self.device)
         labels = labels.to(self.device)
-        preds = self(imgs)
+        preds = self(imgs, country, age)
         #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
@@ -122,9 +138,11 @@ class ERI(LightningModule):
         vid_preds = {}
         data, labels = batch
         imgs = data['images'] #.to(self.device)
+        age = data['age'].to(self.device)
+        country = data['country'].to(self.device)
         labels = labels.to(self.device)
         with torch.no_grad():
-            preds = self(imgs)
+            preds = self(imgs, country, age)
         #loss = F.mse_loss(preds, labels)
         loss = self.pcc_loss(preds, labels, False)
         result = {"val_preds": preds,
@@ -156,8 +174,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
-        #preds = preds * 0.3592 + 0.3652
-        #labels = labels * 0.3592 + 0.3652
+        preds = preds * 0.3592 + 0.3652
+        labels = labels * 0.3592 + 0.3652
 
         loss = np.mean([data['val_loss'] for data in validation_step_outputs])
         apcc = self.pcc(preds, labels, False)
@@ -170,9 +188,11 @@ class ERI(LightningModule):
     def test_step(self, batch, batch_idx):
         data, labels = batch
         imgs = data['images']  # .to(self.device)
+        age = data['age'].to(self.device)
+        country = data['country'].to(self.device)
         labels = labels.to(self.device)
         with torch.no_grad():
-            preds = self(imgs)
+            preds = self(imgs, country, age)
         result = {"test_preds": preds,
                   "test_labels": labels}
         return result
@@ -181,8 +201,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['test_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['test_labels'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
-        #preds = preds * 0.3592 + 0.3652
-        #labels = labels * 0.3592 + 0.3652
+        preds = preds * 0.3592 + 0.3652
+        labels = labels * 0.3592 + 0.3652
 
         apcc = self.pcc(preds, labels, False)
         self.log('test_apcc', apcc, on_epoch=True)
@@ -195,8 +215,6 @@ class ERI(LightningModule):
         return result
 
 
-# todo: remove sigmoid, add Z score,
-# try two models
 if __name__ == '__main__':
 
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'
