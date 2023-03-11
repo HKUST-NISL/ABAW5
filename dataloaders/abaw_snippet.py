@@ -69,8 +69,8 @@ class ABAWDataset(Dataset):
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
         self.features = args['features']
-        self.feat_dir = args['feat_dir']
-        self.diff_dir = args['diff_dir']
+        self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
+        self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
@@ -98,7 +98,7 @@ class ABAWDataset(Dataset):
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
             # get the indices
-            df_path = os.path.join(self.diff_dir, self.set_type, file_name+'.csv')
+            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_type, file_name+'.csv')
             diff_df = pd.read_csv(df_path, index_col=0)
 
             scores = diff_df['10'].values
