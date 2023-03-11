@@ -18,7 +18,6 @@ img = cv2.imread('tsukuba_l.png',0)
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
 cl1 = clahe.apply(img)
 cv2.imwrite('clahe_2.jpg',cl1)'''
-import pandas as pd
 
 
 def saveOpticalFlowScores(save_path, data_path, useGpu):
@@ -47,6 +46,7 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
         if folder in already_saved:
+            print('skip', folder)
             continue
 
         images = []

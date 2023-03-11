@@ -96,7 +96,7 @@ class ERI(LightningModule):
             
         return [optimizer], [lr_scheduler]
     
-    def _calculate_loss(self, batch, mode="train"):
+    def _calculate_loss(self, batch, train):
         data, labels = batch
         imgs = data['images'] #.to(self.device)
         labels = labels.to(self.device)
@@ -104,11 +104,11 @@ class ERI(LightningModule):
         #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
-        loss = self.pcc_loss(preds, labels)
+        loss = self.pcc_loss(preds, labels, train)
         return loss
 
     def training_step(self, batch, batch_idx):
-        loss = self._calculate_loss(batch, mode="train")
+        loss = self._calculate_loss(batch, True)
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         self.log("train_loss", loss)
         result = {'loss': loss}
@@ -126,23 +126,31 @@ class ERI(LightningModule):
         with torch.no_grad():
             preds = self(imgs)
         #loss = F.mse_loss(preds, labels)
-        loss = self.pcc_loss(preds, labels)
+        loss = self.pcc_loss(preds, labels, False)
         result = {"val_preds": preds,
                   "val_labels": labels, "val_loss": loss.item()}
         return result
 
-    def pcc_loss(self, preds, labels):
+    def pcc_loss(self, preds, labels, train):
+        pcc = self.pcc(preds, labels, train)
+        loss = 1 - torch.mean(pcc)
+        return loss
+
+    def pcc(self, preds, labels, train):
         preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
         labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
 
         preds_mean = torch.mean(preds, dim=0, keepdim=True)
         labels_mean = torch.mean(labels, dim=0, keepdim=True)
-
-        pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
-              ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (1e-7))
-
-        loss = 1 - torch.mean(pcc)
-        return loss
+        if train:
+            pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
+                  ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2, dim=0)) ** 0.5 + (
+                      1e-7))
+        else:
+            pcc = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0) / \
+                  ((torch.sum((preds - preds_mean) ** 2, dim=0) * torch.sum((labels - labels_mean) ** 2,
+                                                                            dim=0)) ** 0.5)
+        return torch.mean(pcc)
     
     def validation_epoch_end(self, validation_step_outputs):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
@@ -152,17 +160,7 @@ class ERI(LightningModule):
         #labels = labels * 0.3592 + 0.3652
 
         loss = np.mean([data['val_loss'] for data in validation_step_outputs])
-
-        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
-        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
-
-        preds_mean = torch.mean(preds, dim=0, keepdim=True)
-        labels_mean = torch.mean(labels, dim=0, keepdim=True)
-
-        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            (torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5
-        
-        apcc = torch.mean(pcc)
+        apcc = self.pcc(preds, labels, False)
 
         self.log('val_apcc', apcc, on_epoch=True)
         result = {"val_apcc": apcc, "val_loss": loss}
@@ -170,9 +168,35 @@ class ERI(LightningModule):
         return result
 
     def test_step(self, batch, batch_idx):
-        pass
+        data, labels = batch
+        imgs = data['images']  # .to(self.device)
+        labels = labels.to(self.device)
+        with torch.no_grad():
+            preds = self(imgs)
+        result = {"test_preds": preds,
+                  "test_labels": labels}
+        return result
+
+    def test_epoch_end(self, validation_step_outputs):
+        preds = torch.cat([data['test_preds'] for data in validation_step_outputs], dim=0)
+        labels = torch.cat([data['test_labels'] for data in validation_step_outputs], dim=0)
+        # unnorm the preds
+        #preds = preds * 0.3592 + 0.3652
+        #labels = labels * 0.3592 + 0.3652
+
+        apcc = self.pcc(preds, labels, False)
+        self.log('test_apcc', apcc, on_epoch=True)
+        result = {"test_apcc": apcc}
+        print(result)
+        preds = preds.detach().cpu().numpy()
+        labels = labels.detach().cpu().numpy()
+        np.save('preds.npy', preds)
+        np.save('labels.npy', labels)
+        return result
 
 
+# todo: remove sigmoid, add Z score,
+# try two models
 if __name__ == '__main__':
 
     # device = 'cuda' if torch.cuda.is_available() else 'cpu'

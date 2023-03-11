@@ -46,14 +46,14 @@ def main(args):
     else:
         print('Invalid model')
 
-    if args.checkpoint == 'None':
-        args.checkpoint = None
+    if args.checkpoint_path == 'None':
+        args.checkpoint_path = None
 
     logger = TensorBoardLogger(save_dir=args.log_dir, name=args.log_name)
 
     trainer = Trainer(deterministic=True,
                       num_sanity_val_steps=10,
-                      resume_from_checkpoint=args.checkpoint,
+                      resume_from_checkpoint=args.checkpoint_path,
                       logger=logger,
                       gpus=args.gpus,
                       gradient_clip_val=args.clip_val,
@@ -69,7 +69,14 @@ def main(args):
         trainer.fit(model, data_module.train_loader, data_module.val_loader)
         trainer.test(model=model, dataloaders=data_module.test_loader)
     else:
-        model = model.load_from_checkpoint(args.checkpoint, args=args)
+        print('load from: ', args.checkpoint_path)
+        model = ERI.load_from_checkpoint(**vars(args))
+        if args.trainer_name == 'eri_seq':
+            model = ERI.load_from_checkpoint(**vars(args))
+        elif args.trainer_name == 'eri_single':
+            model = ERI_single.load_from_checkpoint(**vars(args))
+        else:
+            print('Invalid model')
         trainer.test(model=model, dataloaders=data_module.test_loader)
 
 
@@ -95,11 +102,11 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
 
     # Restart Control
-    parser.add_argument('--checkpoint', default='None', type=str)
+    parser.add_argument('--checkpoint_path', default='experiments/ckpt/smm_transformer_pcc/last.ckpt', type=str)
     parser.add_argument('--pretrained', default='./pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
 
     # Training Info
-    parser.add_argument('--train', default='True', type=str)
+    parser.add_argument('--train', default='False', type=str)
     parser.add_argument('--data_dir', default='./dataset/', type=str)
 
     parser.add_argument('--input_size', default=299, type=int)
@@ -109,7 +116,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--trainer_name', default='eri_seq', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
-    parser.add_argument('--load_feature', default='vgg', type=str) # choices: false, vgg, smm
+    parser.add_argument('--load_feature', default='smm', type=str) # choices: false, vgg, smm
 
     #parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)
