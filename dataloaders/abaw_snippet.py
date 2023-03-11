@@ -80,8 +80,8 @@ class ABAWDataset(Dataset):
 
         nums = []
         labels = []
-        # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:1000]:
+        for data_file in glob.glob(data_path + '/*'):
+        # for data_file in glob.glob(data_path + '/*')[:1000]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -162,7 +162,7 @@ class ABAWDataset(Dataset):
             if self.features == 'image':
                 input = self.transform(Image.open(path)).unsqueeze(0)
             else:
-                img_name = os.path.basename(sel_paths[0])[:-4]
+                img_name = os.path.basename(path)[:-4]
                 feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_type, vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
