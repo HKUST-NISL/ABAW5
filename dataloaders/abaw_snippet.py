@@ -101,7 +101,7 @@ class ABAWDataset(Dataset):
             df_path = os.path.join(self.data_dir, self.diff_dir, self.set_type, file_name+'.csv')
             diff_df = pd.read_csv(df_path, index_col=0)
 
-            scores = diff_df['10'].values
+            scores = diff_df['1'].values
             ind_orderd = np.argsort(scores).tolist()
 
             # while len(ind_orderd) < self.snippet_size:
@@ -203,6 +203,7 @@ class ABAWDataset(Dataset):
 class ABAWDataModuleSnippet(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
+        num_workers = args['num_workers']
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
         test_set = ABAWDataset(1, **args)
@@ -211,17 +212,17 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],
                                        shuffle=True,
-                                       num_workers=8,
+                                       num_workers=num_workers,
                                        collate_fn=collate_fn)
         self.val_loader = DataLoader(dataset=val_set,
                                      batch_size=args['batch_size'],
                                      shuffle=False,
-                                     num_workers=8,
+                                     num_workers=num_workers,
                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=args['batch_size'],
                                       shuffle=False,
-                                      num_workers=8,
+                                      num_workers=num_workers,
                                       collate_fn=collate_fn)
 
     def train_dataloader(self):
