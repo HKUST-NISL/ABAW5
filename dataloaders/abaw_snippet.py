@@ -109,7 +109,7 @@ class ABAWDataset(Dataset):
 
             names = diff_df.index.to_list()
             img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
-            image_paths = [os.path.join(data_file + '/' + folder + '_aligned', name) for name in img_names]
+            image_paths = sorted([os.path.join(data_file + '/' + folder + '_aligned', name) for name in img_names])
             
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
@@ -135,7 +135,9 @@ class ABAWDataset(Dataset):
             # self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
-        print('%s: videos: %d images: %d times: %d' % (indexList[trainIndex], len(self.vid_list)//self.sample_times, len(self.all_image_lists), self.sample_times))
+        print('%s: videos: %d images: %d times: %d' % (
+            indexList[trainIndex], len(self.vid_list)//self.sample_times, 
+            len(self.all_image_lists), self.sample_times))
 
     def __getitem__(self, index):
         data = {}

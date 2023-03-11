@@ -23,24 +23,36 @@ if __name__ == '__main__':
         ckpt_path = 'pretrained/resnet50_ft_weight.pkl'
         with open(ckpt_path, 'rb') as f:
             obj = f.read()
-        weights = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
-        net.load_state_dict(weights, strict=False)
+        ckpt = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
+        ckpt_new = {}
+        for key in ckpt.keys():
+            if 'fc.' not in key:
+                ckpt_new[key] = ckpt[key]
+        net.load_state_dict(ckpt_new)
         out_name = sys.argv[1]+'_features'
         in_size = 224
     elif sys.argv[1] == 'effnetb0':
         net = effnetb0().to(device)
         ckpt_path = 'pretrained/state_vggface2_enet0_new.pt'
         ckpt = torch.load(ckpt_path)
-        net.load_state_dict(ckpt)
+        ckpt_new = {}
+        for key in ckpt.keys():
+            ckpt_new['model.'+key] = ckpt[key]
+        net.load_state_dict(ckpt_new)
         out_name = sys.argv[1]+'_features'
         in_size = 224
     elif sys.argv[1] == 'effnetb0_aff':
         net = effnetb0().to(device)
         ckpt_path = 'pretrained/effnebb0_affect.pth'
         ckpt = torch.load(ckpt_path)
-        net.load_state_dict(ckpt)
+        ckpt_new = {}
+        for key in ckpt.keys():
+            if 'classifier' not in key:
+                ckpt_new[key] = ckpt[key]
+        net.load_state_dict(ckpt_new)
         out_name = sys.argv[1]+'_features'
         in_size = 224
+    print('load ok: %s' % ckpt_path)
 
     dataset = ABAWDataModule_all_images(data_dir=dataset_path,
                              batch_size=250,
@@ -50,7 +62,7 @@ if __name__ == '__main__':
     saving_dir = os.path.join(dataset_path, out_name, 'train')
     print(saving_dir)
     if not os.path.exists(saving_dir):
-        os.mkdir(saving_dir)
+        os.makedirs(saving_dir)
     for batch in tqdm(dataset.train_loader):
         image = batch[0]['image'].to(device)
         vid = batch[0]['vid']
@@ -69,7 +81,7 @@ if __name__ == '__main__':
     saving_dir = os.path.join(dataset_path, out_name, 'val')
     print(saving_dir)
     if not os.path.exists(saving_dir):
-        os.mkdir(saving_dir)
+        os.makedirs(saving_dir)
     for batch in tqdm(dataset.val_loader):
         image = batch[0]['image'].to(device)
         vid = batch[0]['vid']
