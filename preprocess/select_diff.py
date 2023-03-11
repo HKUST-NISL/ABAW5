@@ -14,8 +14,8 @@ import pandas as pd
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch Emotion Training')
 # Datasets
-parser.add_argument('--data_dir',  default='/data/abaw5', type=str)
-parser.add_argument('--out_dir',  default='/data/abaw5_diffs', type=str)
+parser.add_argument('--data_dir',  default='./dataset/abaw5', type=str)
+parser.add_argument('--out_dir',  default='./dataset/abaw5_diffs2', type=str)
 
 
 def run(args):
@@ -26,7 +26,7 @@ def run(args):
     out_dir = args.out_dir
     for set_type in types:
         print(set_type)
-        diff_dir = os.path.join('/data', 'abaw5_diffs', set_type)
+        diff_dir = os.path.join(args.out_dir, set_type)
 
         os.makedirs(diff_dir, exist_ok=True)
 
@@ -45,11 +45,17 @@ def run(args):
             names = []
             diffs = []
             
-            for i in range(len(img_paths))[w_size:]:
+            for i in range(len(img_paths)):
                 diff_row = []
                 names.append(os.path.basename(img_paths[i]))
                 for j in range(w_size):
-                    diff_row.append(np.mean(np.abs(imgs[i].astype(np.float32) - imgs[i-w_size+j].astype(np.float32))))
+                    i_pre = i - (j+1)
+                    if i_pre < 0:
+                        diff = 0
+                    else:
+                        diff = np.mean(np.abs(imgs[i].astype(np.float32) - imgs[i_pre].astype(np.float32)))
+
+                    diff_row.append(diff)
                 
                 diffs.append(diff_row)
 

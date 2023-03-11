@@ -37,6 +37,7 @@ class Collator(object):
         '''
         batch_x = {}
         batch_x['images'] = torch.stack([x['images'] for x in data])
+        batch_x['mask'] = torch.stack([x['mask'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
@@ -68,14 +69,19 @@ class ABAWDataset(Dataset):
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
         self.features = args['features']
+        self.feat_dir = args['feat_dir']
+        self.diff_dir = args['diff_dir']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
         print('Initializing %s' % (indexList[trainIndex]))
-        for data_file in glob.glob(data_path + '/*'):
-        # for data_file in glob.glob(data_path + '/*')[:1000]:
+
+        nums = []
+        labels = []
+        # for data_file in glob.glob(data_path + '/*'):
+        for data_file in glob.glob(data_path + '/*')[:1000]:
             file_name = data_file.split('/')[-1]
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
@@ -92,7 +98,19 @@ class ABAWDataset(Dataset):
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
             # get the indices
-            image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
+            df_path = os.path.join(self.diff_dir, self.set_type, file_name+'.csv')
+            diff_df = pd.read_csv(df_path, index_col=0)
+
+            scores = diff_df['10'].values
+            ind_orderd = np.argsort(scores).tolist()
+
+            # while len(ind_orderd) < self.snippet_size:
+            #     ind_orderd = ind_orderd + ind_orderd
+
+            names = diff_df.index.to_list()
+            img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
+            image_paths = [os.path.join(data_file + '/' + folder + '_aligned', name) for name in img_names]
+            
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
@@ -107,6 +125,9 @@ class ABAWDataset(Dataset):
                 }
                 self.all_image_lists.append(this_image)
 
+            nums.append(len(image_paths))
+            labels.append(data_entry['intensity'].reshape((1, -1)))
+
         self.args = args
 
         self.vid_list = self.vid_list * self.sample_times
@@ -114,7 +135,7 @@ class ABAWDataset(Dataset):
             # self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
-        print('%s: videos: %d images: %d' % (indexList[trainIndex], len(self.vid_list), len(self.all_image_lists)))
+        print('%s: videos: %d images: %d times: %d' % (indexList[trainIndex], len(self.vid_list)//self.sample_times, len(self.all_image_lists), self.sample_times))
 
     def __getitem__(self, index):
         data = {}
@@ -125,10 +146,12 @@ class ABAWDataset(Dataset):
 
         video_entry = self.video_dict[vid_name]
 
-        if self.snippet_size > 0:
-            sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
-        else:
-            sel_paths = image_paths
+        # if self.snippet_size > 0:
+        #     sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        # else:
+        #     sel_paths = image_paths
+        
+        sel_paths = image_paths
         
         inputs = []
 
@@ -138,18 +161,22 @@ class ABAWDataset(Dataset):
                 input = self.transform(Image.open(path)).unsqueeze(0)
             elif self.features == 'smm':
                 img_name = os.path.basename(sel_paths[0])[:-4]
-                feat_path = os.path.join(self.data_dir, self.set_type, 'features', vid_name, img_name+'.npy')
+                feat_path = os.path.join(self.feat_dir , self.set_type, 'features', vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
+        
+        mask = torch.ones(self.snippet_size)
+        if len(inputs) < self.snippet_size:
+            mask[len(inputs):] = 0
+            inputs.extend([torch.zeros(inputs[0].shape)] * (self.snippet_size - len(inputs)))
+
+        mask = torch.matmul(mask.view(-1, 1), mask.view(1, -1))
 
         data['images'] = torch.cat(inputs, 0)
-        
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
-        # norm
-        intensity = (intensity - 0.3652) / 0.3592
         data['intensity'] = intensity
-
+        data['mask'] = mask.float()
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 

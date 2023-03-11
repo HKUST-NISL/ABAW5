@@ -95,11 +95,13 @@ if __name__ == '__main__':
     # Training Info
     parser.add_argument('--train', default='True', type=str)
     parser.add_argument('--data_dir', default='./dataset/abaw5', type=str)
+    parser.add_argument('--diff_dir', default='./dataset/abaw5_diffs', type=str)
     parser.add_argument('--pretrained', default='pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
     parser.add_argument('--input_size', default=224, type=int)
     parser.add_argument('--snippet_size', default=30, type=int)
     parser.add_argument('--sample_times', default=5, type=int)
     parser.add_argument('--features', default='smm', type=str) # image, smm, res50
+    parser.add_argument('--feat_dir', default='./dataset/abaw5', type=str)
     parser.add_argument('--sampling_strategy', default=0, type=int)
 
     parser.add_argument('--trainer_name', default='eri', type=str)

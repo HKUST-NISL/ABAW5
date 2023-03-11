@@ -30,6 +30,8 @@ class ERI(LightningModule):
         self.epochs = args['num_epochs']
         self.features = args['features']
 
+        self.batch_size = args['batch_size']
+
         self.pretrained_path = args['pretrained']
 
         if self.features =='image':
@@ -51,20 +53,24 @@ class ERI(LightningModule):
 
             feat_ch = self.model.out_c
         elif self.features == 'smm':
-            self.model = torch.nn.Identity()
+            # self.model = torch.nn.Identity()
             feat_ch = 272
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=4)
+        self.n_head = 4
+        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
         self.head = nn.Sequential(
             nn.Linear(feat_ch + 8, 7, bias=True),
         )
 
+        # self.head = nn.Linear(feat_ch, 7, bias=True)
+        
+
     def configure_optimizers(self):
 
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
 
         params =[
             {'params': self.transformer.parameters(), 'lr': self.lr},
@@ -87,44 +93,50 @@ class ERI(LightningModule):
             
         return [optimizer], [lr_scheduler]
     
-    def forward_model(self, x, age_con):
+    def forward_model(self, x, age_con, mask):
 
         if self.features == 'image':
             b, n, c, h, w = x.shape
             x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
-
         else:
             b, n, c = x.shape
 
-        # x_mean = torch.mean(x, dim=1, keepdim=True)
-        # x = x - x_mean
-        x = self.transformer(x.view(b, n, -1))
-        x = torch.mean(x, dim=1)#[0]
+        x = x.view(b, n, -1).permute(1, 0, 2)
+        x = self.transformer(x, mask=mask).permute(1, 0, 2)
+        mask_1d = mask[:b, :, :1]
+
+        # print(mask_1d.shape, x.shape)
+        x = torch.sum(x * mask_1d, dim=1) / torch.sum(mask_1d, dim=1)
         x = torch.cat([x, age_con], dim=1)
         x = torch.sigmoid(self.head(x))
-
         return x
-
+        
 
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         # loss = self._calculate_loss(batch, mode="train")
-
         data, labels = batch
         imgs = data['images'].to(self.device)
         age_con = data['age_con'].to(self.device)
+        mask = data['mask'].to(self.device)
+        mask = torch.cat([mask] * 4, dim=0)
         labels = labels.to(self.device)
-        preds = self.forward_model(imgs, age_con)
-        # loss = F.mse_loss(preds, labels)
-        # loss = torch.mean(torch.abs(preds - labels))
+        preds = self.forward_model(imgs, age_con, mask=mask)
 
-        preds_mean = torch.mean(preds, dim=0, keepdim=True)
-        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+        # if self.features != 'image':
+        #     preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        #     labels_mean = torch.mean(labels, dim=0, keepdim=True)
 
-        pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
-            torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
-        
-        loss = 1 - torch.mean(pcc)
+        #     pcc = torch.sum((preds-preds_mean) * (labels-labels_mean), dim=0) / \
+        #         torch.clamp((torch.sum((preds-preds_mean)**2, dim=0) * torch.sum((labels-labels_mean)**2, dim=0))**0.5, min=1e-8)
+
+        #     loss = 1 - torch.mean(pcc)
+
+        # else:
+        #     loss = torch.mean(torch.abs(preds - labels))
+
+        loss = torch.mean(torch.abs(preds - labels))
+
         # self.log("train_a", acc, on_step=False, on_epoch=True)
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -146,8 +158,6 @@ class ERI(LightningModule):
 
         self.log('train_apcc', apcc, on_epoch=True, prog_bar=True)
         result = {"train_apcc": apcc}
-        # print(result)
-        # return result
 
 
     def validation_step(self, batch, batch_idx):
@@ -155,8 +165,10 @@ class ERI(LightningModule):
         data, labels = batch
         imgs = data['images'].to(self.device)
         age_con = data['age_con'].to(self.device)
+        mask = data['mask'].to(self.device)
+        mask = torch.cat([mask] * 4, dim=0)
         labels = labels.to(self.device)
-        preds = self.forward_model(imgs, age_con)
+        preds = self.forward_model(imgs, age_con, mask)
         result = {"val_preds": preds,   
                   "val_labels": labels}
         return result
@@ -165,9 +177,6 @@ class ERI(LightningModule):
 
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
-
-        preds = preds * 0.3592 + 0.3652
-        labels = labels * 0.3592 + 0.3652
 
         loss = torch.mean(torch.abs(preds - labels))
         self.log('val_loss', loss, on_epoch=True, prog_bar=True)
@@ -204,7 +213,7 @@ if __name__ == '__main__':
         'num_epochs': 100,
         'pretrained': ''
     }
-    model = ERI(**args)#.cuda()
+    model = ERI(**args)
 
     x = {}
     x['images'] = torch.rand(4, 30, 3, 256, 256)

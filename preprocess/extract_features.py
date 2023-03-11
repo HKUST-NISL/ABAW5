@@ -4,7 +4,7 @@ from dataloaders.abaw_all_images import ABAWDataModule_all_images
 from tqdm import tqdm
 import numpy as np
 import os
-from models.resnet import resnet50
+# from models.resnet import resnet50
 import pickle
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     dataset = ABAWDataModule_all_images(data_dir=dataset_path,
                              batch_size=250,
-                             input_size=224,
+                             input_size=299,
                              load_feature=False
                              )
     saving_dir = os.path.join(dataset_path, 'train', 'smm_features')
