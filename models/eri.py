@@ -52,9 +52,15 @@ class ERI(LightningModule):
                 self.model.load_state_dict(ckpt, strict=False)
 
             feat_ch = self.model.out_c
-        elif self.features == 'smm':
+        elif 'smm' in self.features:
             # self.model = torch.nn.Identity()
             feat_ch = 272
+        elif 'effnetb0' in self.features:
+            # self.model = torch.nn.Identity()
+            feat_ch = 1280
+        elif 'res' in self.features:
+            # self.model = torch.nn.Identity()
+            feat_ch = 2048
 
         self.n_head = 4
         encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=self.n_head)
