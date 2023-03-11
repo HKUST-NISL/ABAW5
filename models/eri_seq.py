@@ -69,12 +69,17 @@ class ERI(LightningModule):
             outputs = torch.stack(outputs)
             return outputs
         elif self.args['load_feature'] == 'vgg':
-            x = x.to(self.device)   # 4, 300, 2048
-            x = F.relu(self.linear1(x))
-            x = self.linear2(x) # 4, 300, 7
-            x = torch.mean(x, dim=1)
-            x = torch.sigmoid(x)  # 4, 7
-            return x
+            outputs = []
+            b = len(x)
+            for i in range(b):
+                input = x[i].to(self.device).unsqueeze(0) #1, 300, 2048
+                input = F.relu(self.linear1(input))
+                input = self.linear2(input)  # 1, 300, 7
+                input = torch.mean(input, dim=1) # 1, 7
+                input = torch.sigmoid(input)
+                outputs.append(input)
+            outputs = torch.stack(outputs)
+            return outputs
 
     def configure_optimizers(self):
         if self.optim_type == 'adamw':
