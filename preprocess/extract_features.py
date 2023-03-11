@@ -47,7 +47,7 @@ if __name__ == '__main__':
                              input_size=in_size,
                              load_feature=False
                              )
-    saving_dir = os.path.join(dataset_path, 'train', out_name)
+    saving_dir = os.path.join(dataset_path, out_name, 'train')
     print(saving_dir)
     if not os.path.exists(saving_dir):
         os.mkdir(saving_dir)
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             np.save(feat_path, feature)
 
 
-    saving_dir = os.path.join(dataset_path, 'val', out_name)
+    saving_dir = os.path.join(dataset_path, out_name, 'val')
     print(saving_dir)
     if not os.path.exists(saving_dir):
         os.mkdir(saving_dir)
