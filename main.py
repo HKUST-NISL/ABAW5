@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--trainer_name', default='eri_single', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
-    parser.add_argument('--load_feature', default='vgg', type=str) # choices: false, vgg, smm
+    parser.add_argument('--load_feature', default='smm', type=str) # choices: false, vgg, smm
 
     #parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)

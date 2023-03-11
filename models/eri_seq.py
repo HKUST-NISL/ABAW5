@@ -38,10 +38,15 @@ class ERI(LightningModule):
             encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(self.model.out_c, 7, bias=False)
-        else:
+        elif self.args['load_feature'] == 'smm':
             encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(272, 7, bias=False)
+        elif self.args['load_feature'] == 'vgg':
+            self.linear1 = nn.Linear(2048, 128)
+            self.linear2 = nn.Linear(128, 7)
+        else:
+            print('load feature should be one of the followings: [False, smm, vgg]')
     
     def forward(self, x):
         if self.args['load_feature'] == 'False':
@@ -52,17 +57,24 @@ class ERI(LightningModule):
             x = torch.mean(x, dim=1)
             x = torch.sigmoid(self.head(x))  # 4, 7
             return x
-        else:
+        elif self.args['load_feature'] == 'smm':
             outputs = []
             b = len(x)
             for i in range(b):
-                input = x[i].to(self.device).unsqueeze(0)
+                input = x[i].to(self.device) #.unsqueeze(0)
                 input = self.transformer(input)
-                input = torch.mean(input, dim=1)
+                input = torch.mean(input, dim=0)
                 input = torch.sigmoid(self.head(input))
                 outputs.append(input)
-            outputs = torch.cat(outputs, dim=0)
+            outputs = torch.stack(outputs)
             return outputs
+        elif self.args['load_feature'] == 'vgg':
+            x = x.to(self.device)   # 4, 300, 2048
+            x = F.relu(self.linear1(x))
+            x = self.linear2(x) # 4, 300, 7
+            x = torch.mean(x, dim=1)
+            x = torch.sigmoid(x)  # 4, 7
+            return x
 
     def configure_optimizers(self):
         if self.optim_type == 'adamw':

@@ -55,9 +55,9 @@ class ERI_single(LightningModule):
         imgs = data['image'].to(self.device)
         labels = labels.to(self.device)
         preds = self(imgs)
-        #loss = F.mse_loss(preds, labels)
+        loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
-        loss = self.pcc_loss(preds, labels)
+        #loss = self.pcc_loss(preds, labels)
         # print(loss)
         return loss
 
@@ -79,8 +79,10 @@ class ERI_single(LightningModule):
         labels = labels.to(self.device)
         with torch.no_grad():
             preds = self(imgs)
+        loss = F.mse_loss(preds, labels)
+        #loss = self.pcc_loss(preds, labels)
         result = {"val_preds": preds,
-                  "val_labels": labels}
+                  "val_labels": labels, "val_loss": loss.item()}
         return result
 
     def pcc_loss(self, preds, labels):
