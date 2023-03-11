@@ -26,7 +26,6 @@ class ABAWDataset(Dataset):
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
-        print('loading VGG features')
         self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
