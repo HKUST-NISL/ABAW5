@@ -159,9 +159,9 @@ class ABAWDataset(Dataset):
 
             if self.features == 'image':
                 input = self.transform(Image.open(path)).unsqueeze(0)
-            elif self.features == 'smm':
+            else:
                 img_name = os.path.basename(sel_paths[0])[:-4]
-                feat_path = os.path.join(self.feat_dir , self.set_type, 'features', vid_name, img_name+'.npy')
+                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_type, vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
         
