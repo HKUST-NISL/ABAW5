@@ -83,4 +83,6 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
 
 
 if __name__ == '__main__':
-    saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
+    #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
+    saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
+    saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)

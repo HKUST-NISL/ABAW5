@@ -55,7 +55,10 @@ class ERI(LightningModule):
             self.linear2 = nn.Linear(128, 7)
         else:
             print('load feature should be one of the followings: [False, smm, vgg]')
-    
+
+    def sigmoid_(self, x):
+        return 1 / (1 + torch.exp(-10*x))
+
     def forward(self, x, country, age):
         if self.args['load_feature'] == 'False':
             x = x.to(self.device)
@@ -73,8 +76,8 @@ class ERI(LightningModule):
                 if self.args['two_models'] == 'False':
                     input = self.transformer1(input)
                     input = torch.mean(input, dim=0)
-                    input = self.head1(input)
-                    #input = torch.sigmoid(self.head(input))
+                    #input = self.head1(input)
+                    input = self.sigmoid_(self.head1(input))
                 else:
                     input = self.transformer[country[i]](input)
                     input = torch.mean(input, dim=0)
