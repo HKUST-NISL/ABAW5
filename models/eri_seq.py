@@ -125,7 +125,7 @@ class ERI(LightningModule):
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
         #loss = self.pcc_loss(preds, labels, train)
-        labels = (labels > 0.25).int().float()
+        labels = (labels > 0.5).int().float()
         loss = self.bce_loss(preds, labels)
         return loss
 
@@ -151,9 +151,10 @@ class ERI(LightningModule):
             preds = self(imgs, country, age)
         #loss = F.mse_loss(preds, labels)
         #loss = self.pcc_loss(preds, labels, False)
-        labels = (labels > 0.25).int().float()
-        loss = self.bce_loss(preds, labels)
-        result = {"val_preds": preds,
+        new_labels = (labels > 0.5).int().float()
+        loss = self.bce_loss(preds, new_labels)
+        new_preds = (preds > 0.5).int().float()
+        result = {"val_preds": new_preds,
                   "val_labels": labels, "val_loss": loss.item()}
         return result
 
