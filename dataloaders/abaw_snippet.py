@@ -104,9 +104,6 @@ class ABAWDataset(Dataset):
             scores = diff_df['1'].values
             ind_orderd = np.argsort(scores).tolist()
 
-            # while len(ind_orderd) < self.snippet_size:
-            #     ind_orderd = ind_orderd + ind_orderd
-
             names = diff_df.index.to_list()
             img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             image_paths = sorted([os.path.join(data_file + '/' + folder + '_aligned', name) for name in img_names])

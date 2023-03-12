@@ -84,7 +84,7 @@ class ERI(LightningModule):
         ]
 
         if self.optim_type == 'adamw':
-            optimizer = optim.AdamW(params, lr=self.lr)
+            optimizer = optim.AdamW(params, lr=self.lr, weight_decay=0.01)
         elif self.optim_type == 'adam':
             optimizer = optim.Adam(params, lr=self.lr)
         elif self.optim_type == 'sgd':
@@ -141,8 +141,12 @@ class ERI(LightningModule):
         data, labels = batch
         preds = self.forward_model(data)
 
+        loss_l2 = F.mse_loss(preds, labels)
         # loss = torch.mean(torch.abs(preds - labels))
-        loss = 1 - self.calculate_apcc(preds, labels)
+        # loss = 1 - self.calculate_apcc(preds, labels)
+    
+        # loss = loss_l2 + loss_pcc
+        loss = loss_l2
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -173,7 +177,7 @@ class ERI(LightningModule):
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
 
         l1_loss = torch.mean(torch.abs(preds - labels))
-        self.log('val_l1loss', loss, on_epoch=True, prog_bar=True)
+        self.log('val_l1loss', l1_loss, on_epoch=True, prog_bar=True)
 
         apcc = self.calculate_apcc(preds, labels)
         
