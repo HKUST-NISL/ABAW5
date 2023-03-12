@@ -39,6 +39,7 @@ class Collator(object):
         batch_x['images'] = [x['images'] for x in data] #torch.stack([x['images'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
+        batch_x['vid'] = torch.tensor([int(x['vid']) for x in data])
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
         return batch_x, batch_y

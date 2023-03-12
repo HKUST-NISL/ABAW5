@@ -42,8 +42,8 @@ class ERI(LightningModule):
         elif self.args['load_feature'] == 'smm':
             # for first model: US
             encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
-            self.transformer1 = nn.TransformerEncoder(encoder_layer, num_layers=6)
-            self.head1 = nn.Linear(272, 7, bias=False)
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+            self.head = nn.Linear(272, 7, bias=False)
             if self.args['two_models'] == 'True':
                 # for second model: SA
                 encoder_layer2 = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
@@ -75,10 +75,11 @@ class ERI(LightningModule):
             for i in range(b):
                 input = x[i].to(self.device) #.unsqueeze(0)
                 if self.args['two_models'] == 'False':
-                    input = self.transformer1(input)
+                    input = self.transformer(input)
                     input = torch.mean(input, dim=0)
-                    input = self.head1(input)
+                    #input = self.head1(input)
                     #input = self.sigmoid_(self.head1(input))
+                    input = torch.sigmoid(self.head(input))
                 else:
                     input = self.transformer[country[i]](input)
                     input = torch.mean(input, dim=0)
@@ -124,9 +125,9 @@ class ERI(LightningModule):
         #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
-        #loss = self.pcc_loss(preds, labels, train)
-        labels = (labels > 0.5).int().float()
-        loss = self.bce_loss(preds, labels)
+        loss = self.pcc_loss(preds, labels, train)
+        '''labels = (labels > 0.5).int().float()
+        loss = self.bce_loss(preds, labels)'''
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -150,11 +151,11 @@ class ERI(LightningModule):
         with torch.no_grad():
             preds = self(imgs, country, age)
         #loss = F.mse_loss(preds, labels)
-        #loss = self.pcc_loss(preds, labels, False)
-        new_labels = (labels > 0.5).int().float()
+        loss = self.pcc_loss(preds, labels, False)
+        '''new_labels = (labels > 0.5).int().float()
         loss = self.bce_loss(preds, new_labels)
-        new_preds = (preds > 0.5).int().float()
-        result = {"val_preds": new_preds,
+        new_preds = (preds > 0.5).int().float()'''
+        result = {"val_preds": preds,
                   "val_labels": labels, "val_loss": loss.item()}
         return result
 
@@ -230,12 +231,14 @@ class ERI(LightningModule):
         with torch.no_grad():
             preds = self(imgs, country, age)
         result = {"test_preds": preds,
-                  "test_labels": labels}
+                  "test_labels": labels,
+                  "test_vid": data['vid']}
         return result
 
     def test_epoch_end(self, validation_step_outputs):
         preds = torch.cat([data['test_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['test_labels'] for data in validation_step_outputs], dim=0)
+        vids = torch.cat([data['test_vid'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
         #preds = preds * 0.3592 + 0.3652
         #labels = labels * 0.3592 + 0.3652
@@ -248,6 +251,7 @@ class ERI(LightningModule):
         labels = labels.detach().cpu().numpy()
         np.save('preds.npy', preds)
         np.save('labels.npy', labels)
+        np.save('vids.npy', vids)
         return result
 
 
