@@ -29,6 +29,7 @@ class ERI(LightningModule):
         self.decay_steps = args['lr_decay_steps']
         self.epochs = args['num_epochs']
         self.args = args
+        self.bce_loss = torch.nn.BCEWithLogitsLoss()
 
         if self.args['load_feature'] == 'False':
             self.pretrained = args['pretrained']
@@ -76,8 +77,8 @@ class ERI(LightningModule):
                 if self.args['two_models'] == 'False':
                     input = self.transformer1(input)
                     input = torch.mean(input, dim=0)
-                    #input = self.head1(input)
-                    input = self.sigmoid_(self.head1(input))
+                    input = self.head1(input)
+                    #input = self.sigmoid_(self.head1(input))
                 else:
                     input = self.transformer[country[i]](input)
                     input = torch.mean(input, dim=0)
@@ -123,7 +124,9 @@ class ERI(LightningModule):
         #loss = F.mse_loss(preds, labels)
         #loss = torch.mean(torch.abs(preds - labels))
         # print(loss)
-        loss = self.pcc_loss(preds, labels, train)
+        #loss = self.pcc_loss(preds, labels, train)
+        labels = (labels > 0.25).int().float()
+        loss = self.bce_loss(preds, labels)
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -147,10 +150,39 @@ class ERI(LightningModule):
         with torch.no_grad():
             preds = self(imgs, country, age)
         #loss = F.mse_loss(preds, labels)
-        loss = self.pcc_loss(preds, labels, False)
+        #loss = self.pcc_loss(preds, labels, False)
+        labels = (labels > 0.25).int().float()
+        loss = self.bce_loss(preds, labels)
         result = {"val_preds": preds,
                   "val_labels": labels, "val_loss": loss.item()}
         return result
+
+    '''def ccc(gold, pred):
+        gold = K.squeeze(gold, axis=-1)
+        pred = K.squeeze(pred, axis=-1)
+        gold_mean = K.mean(gold, axis=-1, keepdims=True)
+        pred_mean = K.mean(pred, axis=-1, keepdims=True)
+        covariance = (gold - gold_mean) * (pred - pred_mean)
+        gold_var = K.mean(K.square(gold - gold_mean), axis=-1, keepdims=True)
+        pred_var = K.mean(K.square(pred - pred_mean), axis=-1, keepdims=True)
+        ccc = K.constant(2.) * covariance / (gold_var + pred_var + K.square(gold_mean - pred_mean) + K.common.epsilon())
+        return ccc'''
+
+    def pcc_loss_modified(self, preds, labels):
+        preds = torch.mean(preds.reshape(-1, self.sample_times, 7), dim=1)
+        labels = torch.mean(labels.reshape(-1, self.sample_times, 7), dim=1)
+
+        preds_mean = torch.mean(preds, dim=0, keepdim=True)
+        labels_mean = torch.mean(labels, dim=0, keepdim=True)
+        covariance = torch.sum((preds - preds_mean) * (labels - labels_mean), dim=0)
+        preds_var = torch.sum((preds - preds_mean) ** 2, dim=0)
+        labels_var = torch.sum((labels - labels_mean) ** 2,dim=0)
+
+        pcc = covariance / ((preds_var * labels_var) ** 0.5 + 1e-7)
+
+        apcc = torch.mean(pcc)
+        loss = 1 - torch.mean(apcc)
+        return loss
 
     def pcc_loss(self, preds, labels, train):
         pcc = self.pcc(preds, labels, train)
@@ -177,8 +209,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['val_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['val_labels'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
-        preds = preds * 0.3592 + 0.3652
-        labels = labels * 0.3592 + 0.3652
+        #preds = preds * 0.3592 + 0.3652
+        #labels = labels * 0.3592 + 0.3652
 
         loss = np.mean([data['val_loss'] for data in validation_step_outputs])
         apcc = self.pcc(preds, labels, False)
@@ -204,8 +236,8 @@ class ERI(LightningModule):
         preds = torch.cat([data['test_preds'] for data in validation_step_outputs], dim=0)
         labels = torch.cat([data['test_labels'] for data in validation_step_outputs], dim=0)
         # unnorm the preds
-        preds = preds * 0.3592 + 0.3652
-        labels = labels * 0.3592 + 0.3652
+        #preds = preds * 0.3592 + 0.3652
+        #labels = labels * 0.3592 + 0.3652
 
         apcc = self.pcc(preds, labels, False)
         self.log('test_apcc', apcc, on_epoch=True)
