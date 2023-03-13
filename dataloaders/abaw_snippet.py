@@ -88,6 +88,9 @@ class ABAWDataset(Dataset):
         # for data_file in glob.glob(data_path + '/*'):
         # for data_file in glob.glob(data_path + '/*')[:1000]:
         for file_id in df_data['File_ID'].values:
+            # file_id = os.path.basename(data_file)
+            # loc = df['File_ID'] == '['+file_id+']'
+
             file_name = file_id.replace('[', '').replace(']', '')
             loc = df['File_ID'] == file_id
             info = df[loc]

@@ -67,11 +67,12 @@ class ERI(LightningModule):
         encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
-        self.head = nn.Sequential(
-            nn.Linear(feat_ch + 8, 7, bias=True),
-        )
+        # self.head = nn.Sequential(
+        #     nn.Linear(feat_ch + 8, 6, bias=True),
+        #     nn.Linear(6, 7, bias=False),
+        # )
 
-        # self.head = nn.Linear(feat_ch, 7, bias=True)
+        self.head = nn.Linear(feat_ch + 8, 7, bias=True)
         
 
     def configure_optimizers(self):
@@ -139,21 +140,24 @@ class ERI(LightningModule):
         mask = torch.ones(losses.shape).to(losses.device)
         if not flag:
             return mask
+        
+        # hard samples
         quantile = torch.quantile(losses, 0.5, interpolation='nearest')
         mask[losses > quantile] = 2.
 
+        # noisy samples
         quantile = torch.quantile(losses, 0.95, interpolation='nearest')
-        mask[losses > quantile] = 0
+        mask[losses > quantile] = 0.5
         return mask
     
     def compute_loss(self, preds, labels):
         if self.loss_type == 'l2':
             loss_l2 = F.mse_loss(preds, labels, reduction='none')
-            mask = self.hard_sample_mask(loss_l2, True)
+            mask = self.hard_sample_mask(loss_l2, False)
             loss = torch.mean(loss_l2 * mask)
         elif self.loss_type == 'l1':
-            loss_l1 = torch.abs(preds, labels)
-            mask = self.hard_sample_mask(loss_l1)
+            loss_l1 = torch.abs(preds - labels)
+            mask = self.hard_sample_mask(loss_l1, False)
             loss = torch.mean(loss_l1 * mask)
         elif self.loss_type == 'pcc':
             loss = 1 - self.calculate_apcc(preds, labels)
