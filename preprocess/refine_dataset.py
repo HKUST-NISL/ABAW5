@@ -40,9 +40,9 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
     else:
         optical_flow = cv2.optflow.DualTVL1OpticalFlow_create()
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
-    names = []
-    values = []
     for i in tqdm(range(len(files))):
+        names = []
+        values = []
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
         if folder in already_saved:
@@ -74,7 +74,7 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
                 flow = optical_flow.calc(img1, img2, None)
             magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
             result = abs(magnitude).mean()
-            names.append(imageFiles[k])
+            names.append(imageFiles[img_count].split('/')[-1])
             values.append(result)
 
         if save_path is not None:
@@ -83,6 +83,6 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
 
 
 if __name__ == '__main__':
-    #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
-    saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
-    saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
+    saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
+    #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
+    #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
