@@ -82,7 +82,28 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
             df.to_csv(save_path + '/' + folder + '.csv')
 
 
+def checkAllBlack(data_path):
+    files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
+    allBlack=0
+    allImages=0
+    names = []
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        image_path = dir_sub + '/' + folder + '_aligned'
+        imageFiles = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+        for dir_sub_vid_img in imageFiles:
+            allImages += 1
+            image = cv2.imread(dir_sub_vid_img, 1)
+            if image.sum() == 0:
+                allBlack += 1
+                names.append(dir_sub_vid_img.split('/')[-1])
+    df = pd.DataFrame(names, names)
+    df.to_csv(data_path + 'blackImages.csv')
+    print('black images: ', allBlack, allBlack/allImages)
+
 if __name__ == '__main__':
-    saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
+    checkAllBlack('dataset/val/')
+    #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
