@@ -143,22 +143,11 @@ class ABAWDataset(Dataset):
 
     def __getitem__(self, index):
         data = {}
-        # image_entry = self.all_image_lists[index]
-        # image_path = image_entry['path']
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
-
         video_entry = self.video_dict[vid_name]
-
-        # if self.snippet_size > 0:
-        #     sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
-        # else:
-        #     sel_paths = image_paths
-        
         sel_paths = image_paths
-        
         inputs = []
-
         for path in sel_paths:
 
             if self.features == 'image':

@@ -139,21 +139,17 @@ class ERI(LightningModule):
         mask = torch.ones(losses.shape).to(losses.device)
         if not flag:
             return mask
+        quantile = torch.quantile(losses, 0.5, interpolation='nearest')
+        mask[losses > quantile] = 2.
 
-        quantile = torch.quantile(losses, 0.6, interpolation='linear')
-        print(quantile, torch.median(losses))
-        mask[losses > quantile] = 5
+        quantile = torch.quantile(losses, 0.95, interpolation='nearest')
+        mask[losses > quantile] = 0
         return mask
-
-    def training_step(self, batch, batch_idx):
-        # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
-        # loss = self._calculate_loss(batch, mode="train")
-        data, labels = batch
-        preds = self.forward_model(data)
-
+    
+    def compute_loss(self, preds, labels):
         if self.loss_type == 'l2':
-            loss_l2 = F.mse_loss(preds, labels, reduce=False)
-            mask = self.hard_sample_mask(loss_l2, False)
+            loss_l2 = F.mse_loss(preds, labels, reduction='none')
+            mask = self.hard_sample_mask(loss_l2, True)
             loss = torch.mean(loss_l2 * mask)
         elif self.loss_type == 'l1':
             loss_l1 = torch.abs(preds, labels)
@@ -161,6 +157,16 @@ class ERI(LightningModule):
             loss = torch.mean(loss_l1 * mask)
         elif self.loss_type == 'pcc':
             loss = 1 - self.calculate_apcc(preds, labels)
+        
+        return loss
+
+
+    def training_step(self, batch, batch_idx):
+        # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
+        # loss = self._calculate_loss(batch, mode="train")
+        data, labels = batch
+        preds = self.forward_model(data)
+        loss = self.compute_loss(preds, labels)
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
