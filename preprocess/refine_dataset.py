@@ -97,7 +97,7 @@ def checkAllBlack(data_path):
             image = cv2.imread(dir_sub_vid_img, 1)
             if image.sum() == 0:
                 allBlack += 1
-                names.append(dir_sub_vid_img.split('/')[-1])
+                names.append(dir_sub_vid_img)
     df = pd.DataFrame(names, names)
     df.to_csv(data_path + 'blackImages.csv')
     print('black images: ', allBlack, allBlack/allImages)

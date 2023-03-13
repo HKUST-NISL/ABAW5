@@ -65,6 +65,9 @@ class ABAWDataset(Dataset):
         elif args['load_feature'] == 'vgg':
             print('loading VGG features')
             self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
+        elif args['load_feature'] == 'eff':
+            print('loading EffectNet features')
+            self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'eff_features')
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
