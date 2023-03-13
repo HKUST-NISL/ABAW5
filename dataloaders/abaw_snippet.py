@@ -58,12 +58,16 @@ class ABAWDataset(Dataset):
         # self.sampling = SamplingStrategy()
         dataset_folder_path = args['data_dir']
         self.data_dir = dataset_folder_path
-        indexList = ['train', 'val', 'test']
+        indexList = ['Train', 'Val', 'Test']
         self.set_type = indexList[trainIndex]
-        data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
+        self.set_dir = self.set_type.lower()
+        data_path = os.path.join(dataset_folder_path, self.set_dir, 'aligned')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
+
+        df_data = df[df['Split']==self.set_type]
+        # print(df_data)
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
@@ -72,21 +76,23 @@ class ABAWDataset(Dataset):
         self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
 
+
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
-        print('Initializing %s' % (indexList[trainIndex]))
+        print('Initializing %s' % (self.set_dir))
 
         nums = []
         labels = []
-        for data_file in glob.glob(data_path + '/*'):
+        # for data_file in glob.glob(data_path + '/*'):
         # for data_file in glob.glob(data_path + '/*')[:1000]:
-            file_name = data_file.split('/')[-1]
-            loc = df['File_ID'] == '['+file_name+']'
+        for file_id in df_data['File_ID'].values:
+            file_name = file_id.replace('[', '').replace(']', '')
+            loc = df['File_ID'] == file_id
             info = df[loc]
             if info.empty: continue
-            assert info.iat[0, 1].lower() == indexList[trainIndex]
+            # assert info.iat[0, 1].lower() == indexList[trainIndex]
             data_entry = {}
             intensity = info.iloc[0, 2:9].tolist()
             age = info.iloc[0, 9]
@@ -94,11 +100,8 @@ class ABAWDataset(Dataset):
             assert country == 'United States' or 'South Africa'
 
             # data_entry['videoPath'] = data_file
-
             data_entry['intensity'] = np.array(intensity)
-            folder = data_file.split('/')[-1]
-            # get the indices
-            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_type, file_name+'.csv')
+            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
             diff_df = pd.read_csv(df_path, index_col=0)
 
             scores = diff_df['1'].values
@@ -106,7 +109,9 @@ class ABAWDataset(Dataset):
 
             names = diff_df.index.to_list()
             img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
-            image_paths = sorted([os.path.join(data_file + '/' + folder + '_aligned', name) for name in img_names])
+            image_paths = sorted([os.path.join(self.data_dir, self.set_dir, 
+                                               'aligned', file_name, file_name+'aligned',
+                                               name) for name in img_names])
             
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
@@ -145,10 +150,10 @@ class ABAWDataset(Dataset):
 
         video_entry = self.video_dict[vid_name]
 
-        # if self.snippet_size > 0:
-        #     sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
-        # else:
-        #     sel_paths = image_paths
+        if self.snippet_size > 0:
+            sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        else:
+            sel_paths = image_paths
         
         sel_paths = image_paths
         
@@ -160,7 +165,7 @@ class ABAWDataset(Dataset):
                 input = self.transform(Image.open(path)).unsqueeze(0)
             else:
                 img_name = os.path.basename(path)[:-4]
-                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_type, vid_name, img_name+'.npy')
+                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
         
@@ -239,10 +244,14 @@ if __name__ == '__main__':
                              input_size=224,
                              snippet_size = 30,
                              sample_times=5,
+                             num_workers=8,
+                             features='smm',
+                             feat_dir='',
+                             diff_dir=''
                              )
 
     for batch in tqdm(dataset.train_loader):
-        print(batch[0]['age_con'].shape)
+        pass
     for batch in tqdm(dataset.val_loader):
         pass
     for batch in tqdm(dataset.test_loader):
