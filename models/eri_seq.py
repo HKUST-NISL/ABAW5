@@ -249,9 +249,10 @@ class ERI(LightningModule):
         print(result)
         preds = preds.detach().cpu().numpy()
         labels = labels.detach().cpu().numpy()
-        np.save('preds.npy', preds)
-        np.save('labels.npy', labels)
-        np.save('vids.npy', vids)
+        vids = vids.detach().cpu().numpy()
+        np.save('preds_train.npy', preds)
+        np.save('labels_train.npy', labels)
+        np.save('vids_val.npy', vids)
         return result
 
 
