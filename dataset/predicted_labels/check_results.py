@@ -102,13 +102,16 @@ def showImages(csvFile='train_results.csv', datasetFile='dataset/train/aligned/'
     fileNames = df[df.columns[0]].tolist()
     imgs = []
     for vid in fileNames:
-        imgPath = datasetFile + vid + '/' + vid + '_aligned/' + 'frame_det_00_000005.jpg'
+        imgPath = datasetFile + str(vid) + '/' + str(vid) + '_aligned/' + 'frame_det_00_000005.jpg'
         img = cv2.imread(imgPath, 1)
+        img = img[..., ::-1]
         imgs.append(img)
     f, axarr = plt.subplots(2, 5)
     for i in range(2):
         for j in range(5):
             axarr[i, j].imshow(imgs[i*5+j])
+            axarr[i, j].set_title(fileNames[i*5+j])
+            axarr[i, j].set_axis_off()
     plt.show()
     plt.savefig('./worst_performance_train')
 
