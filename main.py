@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--trainer_name', default='eri', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
-    parser.add_argument('--loss', default='bce', type=str)
+    parser.add_argument('--loss', default='l2', type=str) # l2, l1, pcc
     parser.add_argument('--weight_decay', default=1e-5, type=float)
     parser.add_argument('--no_augment', action='store_true')
     parser.add_argument('--log_dir', default='experiments', type=str)

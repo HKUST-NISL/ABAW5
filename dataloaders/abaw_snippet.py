@@ -110,7 +110,7 @@ class ABAWDataset(Dataset):
             names = diff_df.index.to_list()
             img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             image_paths = sorted([os.path.join(self.data_dir, self.set_dir, 
-                                               'aligned', file_name, file_name+'aligned',
+                                               'aligned', file_name, file_name+'_aligned',
                                                name) for name in img_names])
             
             data_entry['image_paths'] = image_paths
@@ -150,10 +150,10 @@ class ABAWDataset(Dataset):
 
         video_entry = self.video_dict[vid_name]
 
-        if self.snippet_size > 0:
-            sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
-        else:
-            sel_paths = image_paths
+        # if self.snippet_size > 0:
+        #     sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        # else:
+        #     sel_paths = image_paths
         
         sel_paths = image_paths
         
