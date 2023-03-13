@@ -150,10 +150,10 @@ class ABAWDataset(Dataset):
 
         video_entry = self.video_dict[vid_name]
 
-        if self.snippet_size > 0:
-            sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
-        else:
-            sel_paths = image_paths
+        # if self.snippet_size > 0:
+        #     sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        # else:
+        #     sel_paths = image_paths
         
         sel_paths = image_paths
         
