@@ -31,7 +31,6 @@ class ERI(LightningModule):
         self.features = args['features']
         self.loss_type = args['loss']
 
-        self.batch_size = args['batch_size']
 
         self.pretrained_path = args['pretrained']
 
@@ -63,16 +62,16 @@ class ERI(LightningModule):
             # self.model = torch.nn.Identity()
             feat_ch = 2048
 
-        self.n_head = 4
-        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=feat_ch, nhead=self.n_head)
+        self.tokens = 1
+        self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
+        self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
+
+        self.n_head = 8
+        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=2048, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
-        # self.head = nn.Sequential(
-        #     nn.Linear(feat_ch + 8, 6, bias=True),
-        #     nn.Linear(6, 7, bias=False),
-        # )
-
         self.head = nn.Linear(feat_ch + 8, 7, bias=True)
+        # self.heads = nn.ModuleList([nn.Linear(feat_ch + 8, 1, bias=True) for i in range(self.tokens)])
         
 
     def configure_optimizers(self):
@@ -80,17 +79,17 @@ class ERI(LightningModule):
         # for param in self.model.parameters():
         #     param.requires_grad = False
 
-        params =[
-            {'params': self.transformer.parameters(), 'lr': self.lr},
-            {'params': self.head.parameters(), 'lr': self.lr}
-        ]
+        # params =[
+        #     {'params': self.transformer.parameters(), 'lr': self.lr},
+        #     {'params': self.head.parameters(), 'lr': self.lr}
+        # ]
 
         if self.optim_type == 'adamw':
-            optimizer = optim.AdamW(params, lr=self.lr, weight_decay=0.01)
+            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
         elif self.optim_type == 'adam':
-            optimizer = optim.Adam(params, lr=self.lr)
+            optimizer = optim.Adam(self.parameters(), lr=self.lr)
         elif self.optim_type == 'sgd':
-            optimizer = optim.SGD(params, lr=self.lr, momentum=0.9, weight_decay=0.0)
+            optimizer = optim.SGD(self.parameters(), lr=self.lr, momentum=0.9, weight_decay=0.0)
             
         if self.scheduler_type == 'step':
             lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.decay_steps, gamma=self.gamma)
@@ -114,17 +113,15 @@ class ERI(LightningModule):
             b, n, c = x.shape
 
         x = x.reshape(b, n, -1)
-        mask_1d = mask[:b, :, :1]
         
-        # x_mean = torch.sum(x * mask_1d, dim=1) / torch.sum(mask_1d, dim=1)
-        # x = x - x_mean.unsqueeze(1)
-
+        reg_token = torch.tile(self.reg_token, (b, self.tokens, 1))
+        x = torch.cat([reg_token, x], dim=1)
         x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
 
-        # print(mask_1d.shape, x.shape)
-        x = torch.sum(x * mask_1d, dim=1) / torch.sum(mask_1d, dim=1)
-        x = torch.cat([x, age_con], dim=1)
+        x = x[:, 0]
+        x = torch.cat([x, age_con], dim=-1)
         preds = torch.sigmoid(self.head(x))
+
         return preds
     
     def calculate_apcc(self, preds, labels):
@@ -141,9 +138,9 @@ class ERI(LightningModule):
         if not flag:
             return mask
         
-        # hard samples
-        quantile = torch.quantile(losses, 0.5, interpolation='nearest')
-        mask[losses > quantile] = 2.
+        # # hard samples
+        # quantile = torch.quantile(losses, 0.5, interpolation='nearest')
+        # mask[losses > quantile] = 2.
 
         # noisy samples
         quantile = torch.quantile(losses, 0.95, interpolation='nearest')
@@ -227,14 +224,17 @@ if __name__ == '__main__':
         'lr_decay_rate': 0.98,
         'lr_decay_steps': 10,
         'num_epochs': 100,
-        'pretrained': ''
+        'pretrained': '',
+        'features': 'smm',
+        'loss': 'l2'
+
     }
     model = ERI(**args)
 
     x = {}
     x['images'] = torch.rand(4, 30, 3, 256, 256)
     y = torch.rand(4, 7)
-    loss = model._calculate_loss((x, y))
+    loss = model.forward_model(x)
 
     # yy = model(x)
     # print(y.shape)
