@@ -65,23 +65,39 @@ class ERI(LightningModule):
             # self.model = torch.nn.Identity()
             feat_ch = 2048
 
+        hidden_ch = 256
+        self.conv_module = nn.Sequential(
+            nn.Conv1d(feat_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
+        )
+
+        self.elem_atten = nn.Sequential(
+            nn.Conv1d(hidden_ch, 1, kernel_size=3, stride=1, padding=1),
+            nn.Softmax(dim=-1),
+        )
+        feat_ch = hidden_ch
+
         self.tokens = 1
         self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, feat_ch))
         self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
 
-        self.n_head = 8
-        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=2048, nhead=self.n_head)
+        self.n_head = 4
+        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=512, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
-        self.layer_norm = nn.LayerNorm(feat_ch)
+        # self.layer_norm = nn.LayerNorm(feat_ch)
 
-        self.head = nn.Linear(feat_ch + 8, 7, bias=True)
+        # self.head = nn.Linear(feat_ch + 8, 7, bias=True)
+        # self.head = nn.Linear(feat_ch, 7)
 
-        # self.head = nn.Sequential(
-        #     nn.Linear(feat_ch + 8, 256, bias=False),
-        #     nn.LayerNorm(256),
-        #     nn.Dropout(0.2),
-        #     nn.Linear(256, 7, bias=False),
-        # )
+        self.head = nn.Sequential(
+            nn.Linear(feat_ch * 2, hidden_ch, bias=False),
+            nn.LayerNorm(hidden_ch),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_ch, 7, bias=False),
+        )
 
     def configure_optimizers(self):
 
@@ -129,7 +145,7 @@ class ERI(LightningModule):
         x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
 
         x = x[:, 0]
-        x = torch.cat([x, age_con], dim=-1)
+        # x = torch.cat([x, age_con], dim=-1)
         preds = torch.sigmoid(self.head(x))
 
         return preds
@@ -148,14 +164,23 @@ class ERI(LightningModule):
                 n, c = x.shape
 
             x = x.reshape(1, n, -1)
+
+            x = x.permute(0, 2, 1)
+            x = self.conv_module(x)
+            attn = self.elem_atten(x)
+            # x = torch.sum(x * attn, dim=-1)
+            x = x.permute(0, 2, 1)
+            # print(x.shape)
+
             
             reg_token = self.reg_token
             x = torch.cat([reg_token, x], dim=1)
-
             x = self.transformer(x.permute(1, 0, 2)).permute(1, 0, 2)
 
-            x = x[:, 0]
-            x = torch.cat([x, age_con[i:i+1]], dim=-1)
+            x1 = x[:, 0]
+            x2 = torch.sum(x[:, 1:] * attn.permute(0, 2, 1), dim=1)
+
+            x = torch.cat([x1, x2], dim=-1)
             feats.append(x)
 
         feats = torch.cat(feats, dim = 0)
