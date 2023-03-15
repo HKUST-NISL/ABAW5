@@ -58,7 +58,10 @@ class ERI(LightningModule):
         elif 'effnetb0' in self.features:
             # self.model = torch.nn.Identity()
             feat_ch = 1280
-        elif 'res' in self.features:
+        elif 'res18' in self.features:
+            # self.model = torch.nn.Identity()
+            feat_ch = 512
+        elif 'resnet50' in self.features:
             # self.model = torch.nn.Identity()
             feat_ch = 2048
 
