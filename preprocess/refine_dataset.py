@@ -10,6 +10,7 @@ import torch
 from face_aligner import FaceAligner
 from PIL import Image
 import matplotlib.pyplot as plt
+import subprocess
 
 # 1. Contrast Limited Adaptive Histogram Equalization
 # 2. detect rotated images
@@ -115,14 +116,55 @@ def checkAllBlack(data_path, saveName):
     print('# black frames: ', allBlack, allBlack/allImages)
     print('# black videos: ', videoNumber)
 
-def deleteUnwantedVideos(data_path,  csv_path):
-    df = pd.read_csv(csv_path)
-    videosToRedetect = set(df.iloc[:, 1].tolist())
-    for video in videosToRedetect:
-        frameLen = len(video) # length of frames given the video path
-        black_frames = df # black frames from the csv given the vid
-        # if > 50% is black, delete video
-        # otherwise delete these frames
+def checkAllBlackAfterRealign(blackImageCsv, data_path, saveName):
+    df = pd.read_csv(blackImageCsv)
+    realignedVideo = set(df.iloc[:, 1].tolist())
+
+    files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
+    allBlack=0
+    allImages=0
+    names = []
+    videos = []
+    videoNumber = 0
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        if int(folder) in realignedVideo:
+            image_path = data_path + "re_aligned/" + folder + '/' + folder + '_aligned'
+        else:
+            image_path = dir_sub + '/' + folder + '_aligned'
+        imageFiles = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+        isThisVideo = 0
+        for dir_sub_vid_img in imageFiles:
+            allImages += 1
+            image = cv2.imread(dir_sub_vid_img, 1)
+            if image.sum() == 0:
+                if isThisVideo == 0:
+                    isThisVideo = 1
+                allBlack += 1
+                names.append(dir_sub_vid_img)
+                videos.append(folder)
+        videoNumber += isThisVideo
+    df = pd.DataFrame(videos, names)
+    df.to_csv(data_path + saveName + '.csv')
+    print('# black frames: ', allBlack, allBlack/allImages)
+    print('# black videos: ', videoNumber)
+
+
+def deleteBlackImagesRealign(data_path):
+    files = natsort.natsorted(glob.glob(data_path + "re_aligned/*"))
+    totalDelete = 0
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        image_path = dir_sub + '/' + folder + '_aligned'
+        imageFiles = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+        for dir_sub_vid_img in imageFiles:
+            image = cv2.imread(dir_sub_vid_img, 1)
+            if image.sum() == 0:
+                subprocess.run(["rm", dir_sub_vid_img])
+                totalDelete += 1
+    print('total delete frame: ', totalDelete)
 
 
 def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
@@ -201,7 +243,9 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
 
 if __name__ == '__main__':
     #reDetectFacesDrawExample('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
-    checkAllBlack('dataset/train/', 'blackImages_realigned')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
+
+    checkAllBlackAfterRealign('dataset/train/blackImages.csv', 'dataset/train/', 'blackImages_realigned')
+    # deleteBlackImagesRealign('dataset/train/')
