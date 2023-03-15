@@ -242,10 +242,10 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
 
 
 if __name__ == '__main__':
-    #reDetectFacesDrawExample('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    #reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
 
-    checkAllBlackAfterRealign('dataset/train/blackImages.csv', 'dataset/train/', 'blackImages_realigned')
+    checkAllBlackAfterRealign('dataset/train/blackImages_before.csv', 'dataset/train/', 'blackImages_realigned')
     # deleteBlackImagesRealign('dataset/train/')

@@ -169,7 +169,7 @@ if __name__ == '__main__':
                               shuffle=True)
     for batch in train_loader:
         print(batch)'''
-    dataset = ABAWDataModule(dataset_folder_path="./dataset/",
+    dataset = ABAWDataModule_all_images(dataset_folder_path="./dataset/",
                              batch_size=32,
                              input_image_size=299,
                              load_feature='True'

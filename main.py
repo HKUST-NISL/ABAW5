@@ -83,7 +83,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     # Basic Training Control
-    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--num_workers', default=0, type=int)
     parser.add_argument('--seed', default=1234, type=int)
     parser.add_argument('--lr', default=1e-3, type=float)
@@ -102,11 +102,11 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
 
     # Restart Control
-    parser.add_argument('--checkpoint_path', default='experiments/ckpt/smm_transformer_pcc/last.ckpt', type=str)
+    parser.add_argument('--checkpoint_path', default=None, type=str)
     parser.add_argument('--pretrained', default='./pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
 
     # Training Info
-    parser.add_argument('--train', default='False', type=str)
+    parser.add_argument('--train', default='True', type=str)
     parser.add_argument('--data_dir', default='./dataset/', type=str)
     parser.add_argument('--two_models', default='False', type=str)
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--trainer_name', default='eri_seq', type=str)
     parser.add_argument('--model_name', default='SMMNet', type=str)
-    parser.add_argument('--load_feature', default='eff', type=str) # choices: false, vgg, smm, eff
+    parser.add_argument('--load_feature', default='smm', type=str) # choices: false, vgg, smm, eff
 
     #parser.add_argument('--loss', default='bce', type=str)
     parser.add_argument('--weight_decay', default=1e-5, type=float)

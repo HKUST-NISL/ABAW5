@@ -45,6 +45,11 @@ class Collator(object):
         return batch_x, batch_y
 
 
+def getListOfRealignedVideos(blackImageFile):
+    df = pd.read_csv(blackImageFile)
+    videoList = set(df.iloc[:, 1].tolist())
+    return videoList
+
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
         '''
@@ -55,6 +60,11 @@ class ABAWDataset(Dataset):
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
         data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
+
+        #realigned_data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 're_aligned')
+        csv = dataset_folder_path + '/' + indexList[trainIndex] + '/blackImages_before.csv'
+        realignFailedVideos = getListOfRealignedVideos(csv)
+
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_strategy'])
         df = pd.read_csv(data_info_path)
@@ -62,6 +72,7 @@ class ABAWDataset(Dataset):
         if args['load_feature'] == 'smm':
             print('loading SMM features')
             self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'features')
+            self.data_path_feature_realigned = os.path.join(dataset_folder_path, indexList[trainIndex], 'realigned_features')
         elif args['load_feature'] == 'vgg':
             print('loading VGG features')
             self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
@@ -99,9 +110,13 @@ class ABAWDataset(Dataset):
             data_entry['intensity'] = np.array(intensity)
             folder = data_file.split('/')[-1]
             if args['load_feature'] == 'False':
+                print('TO IMPLEMENT: check if read images from aligned or realigned')
                 image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
             else:
-                image_paths = natsort.natsorted(glob.glob(self.data_path_feature + '/' + folder + '/*.npy'))
+                if int(folder) in realignFailedVideos:
+                    image_paths = natsort.natsorted(glob.glob(self.data_path_feature_realigned + '/' + folder + '/*.npy'))
+                else:
+                    image_paths = natsort.natsorted(glob.glob(self.data_path_feature + '/' + folder + '/*.npy'))
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
@@ -130,6 +145,9 @@ class ABAWDataset(Dataset):
         # image_path = image_entry['path']
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
+        # todo: check if image_path is []
+        # todo: check if image less than 50
+        # todo: check val
 
         video_entry = self.video_dict[vid_name]
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
