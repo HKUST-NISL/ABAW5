@@ -136,7 +136,7 @@ def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
         origins.append(frame_ori)
         realigned.append(frame)
 
-    imgs = origins
+    imgs = realigned
     f, axarr = plt.subplots(2, 5)
     for i in range(2):
         for j in range(5):
@@ -171,7 +171,13 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
             if not ret:
                 break
             image_height, image_width, _ = frame.shape
-            frame = face_aligner.align_face(frame)
+            try:
+                frame = face_aligner.align_face(frame)
+            except:
+                size = frame.shape
+                frame = np.zeros((size))
+                print(filename)
+
             cv2.imshow('0', frame)
             cv2.waitKey(0)
 
@@ -182,7 +188,7 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
 
 
 if __name__ == '__main__':
-    reDetectFaces('dataset/train/blackImages.csv', 'dataset/train/', '/Users/adia/Desktop/abaw/datasets/train/mp4/')
+    reDetectFacesDrawExample('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #checkAllBlack('dataset/train/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
