@@ -52,7 +52,30 @@ if __name__ == '__main__':
         net.load_state_dict(ckpt_new)
         out_name = sys.argv[1]+'_features'
         in_size = 224
+    elif sys.argv[1] == 'effnetb0_raf':
+        net = effnetb0().to(device)
+        ckpt_path = 'pretrained/effnebb0_rafdb.pth'
+        ckpt = torch.load(ckpt_path)
+        ckpt_new = {}
+        for key in ckpt.keys():
+            if 'classifier' not in key:
+                ckpt_new[key] = ckpt[key]
+        net.load_state_dict(ckpt_new)
+        out_name = sys.argv[1]+'_features'
+        in_size = 224
+    elif sys.argv[1] == 'res18':
+        net = ResNetEmo(version=18).to(device)
+        ckpt_path = 'pretrained/res18_affect.pth'
+        ckpt = torch.load(ckpt_path)
+        ckpt_new = {}
+        for key in ckpt.keys():
+            if 'fc' not in key:
+                ckpt_new[key] = ckpt[key]
+        net.load_state_dict(ckpt_new)
+        out_name = sys.argv[1]+'_features'
+        in_size = 224
     print('load ok: %s' % ckpt_path)
+    
 
     dataset = ABAWDataModule_all_images(data_dir=dataset_path,
                              batch_size=250,

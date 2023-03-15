@@ -37,7 +37,7 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        if self.flag:
+        if not self.flag:
             batch_x['images'] = torch.stack([x['images'] for x in data])
             batch_x['mask'] = torch.stack([x['mask'] for x in data])
         else:
@@ -106,11 +106,11 @@ class ABAWDataset(Dataset):
 
             # data_entry['videoPath'] = data_file
             data_entry['intensity'] = np.array(intensity)
+            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
+            diff_df = pd.read_csv(df_path, index_col=0)
             
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
-                df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
-                diff_df = pd.read_csv(df_path, index_col=0)
                 scores = diff_df['1'].values
                 ind_orderd = np.argsort(scores).tolist()
                 img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
