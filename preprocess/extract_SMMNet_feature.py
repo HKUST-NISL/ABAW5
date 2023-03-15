@@ -1,3 +1,5 @@
+import math
+
 from models.smm_net import SMMNet
 import torch
 from dataloaders.abaw_all_images import ABAWDataModule_all_images
@@ -110,11 +112,12 @@ def extract_realigned(choice):
         images = torch.stack(images).to(device)
         features = []
         with torch.no_grad():
-            for i in range(images.size()[0]):
-                feature = net(images[i:(i+1)]) #[:, :, 0, 0]  # size: 64, 272
+            for i in range(0, images.size()[0], batch):
+                feature = net(images[i:(i+batch)])
                 features.append(feature)
-
-        for i in range(len(features)):
+        features = torch.cat(features)
+        assert features.size()[0] == images.size()[0]
+        for i in range(features.size()[0]):
             feature = features[i].cpu().detach().numpy()
             folder = imageFiles[i].split('/')[-3]
             file = imageFiles[i].split('/')[-1][:-4]
