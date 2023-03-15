@@ -63,7 +63,7 @@ class ERI(LightningModule):
             feat_ch = 2048
 
         self.tokens = 1
-        self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
+        # self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
         self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
 
         self.n_head = 8
@@ -126,25 +126,31 @@ class ERI(LightningModule):
         return preds
 
     def forward_model_seq(self, data):
-        x = data['images'].to(self.device)
+        input = data['images'].to(self.device)
         age_con = data['age_con'].to(self.device)
 
-        for in range(len(x)):
+        feats = []
+        for i in range(len(input)):
+            x = input[i]
             if self.features == 'image':
-                n, c, h, w = x[i].shape
+                n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
             else:
-                b, n, c = x.shape
+                n, c = x.shape
 
-            x = x.reshape(b, n, -1)
+            x = x.reshape(1, n, -1)
             
-            reg_token = torch.tile(self.reg_token, (b, self.tokens, 1))
+            reg_token = self.reg_token
             x = torch.cat([reg_token, x], dim=1)
-            x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
+
+            x = self.transformer(x.permute(1, 0, 2)).permute(1, 0, 2)
 
             x = x[:, 0]
-            x = torch.cat([x, age_con], dim=-1)
-            preds = torch.sigmoid(self.head(x))
+            x = torch.cat([x, age_con[i:i+1]], dim=-1)
+            feats.append(x)
+
+        feats = torch.cat(feats, dim = 0)
+        preds = torch.sigmoid(self.head(feats))
 
         return preds
     
