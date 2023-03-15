@@ -36,6 +36,18 @@ plt.plot(x, np.cumsum(explained_variance))
 plt.savefig('./dataset/pca.png')
 
 
+X_train_pca = pca.transform(X_train)
+X_train_pca2 = (X_train - pca.mean_).dot(pca.components_.T)
+
+print(pca.mean_)
+print(pca.components_.T[:, :6])
+
+print((X_train_pca - X_train_pca2).mean())
+print(X_train_pca2.shape)
+
+
+
+
 pca = PCA(n_components = 7)
 X_train = pca.fit_transform(df_val[cols])
 # X_test = pca.transform(X_test)
