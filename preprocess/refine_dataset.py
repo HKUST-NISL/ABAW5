@@ -172,6 +172,8 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
                 break
             image_height, image_width, _ = frame.shape
             frame = face_aligner.align_face(frame)
+            cv2.imshow('0', frame)
+            cv2.waitKey(0)
 
             indexStr = '0' * (filenamePadding - len(str(index))) + str(index)
             name = final_dir + '/frame_det_00_' + indexStr + '.jpg'
@@ -180,7 +182,7 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
 
 
 if __name__ == '__main__':
-    reDetectFaces('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    reDetectFaces('dataset/train/blackImages.csv', 'dataset/train/', '/Users/adia/Desktop/abaw/datasets/train/mp4/')
     #checkAllBlack('dataset/train/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
