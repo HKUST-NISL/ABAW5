@@ -115,7 +115,13 @@ class ABAWDataset(Dataset):
                 ind_orderd = np.argsort(scores).tolist()
                 img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             else:
-                img_names = names
+                max_len = 800
+                if len(names) > max_len:
+                    scores = diff_df['1'].values
+                    ind_orderd = np.argsort(scores).tolist()
+                    img_names = [ names[ind] for ind in ind_orderd[:max_len]] 
+                else:
+                    img_names = names
             image_paths = sorted([os.path.join(self.data_dir, self.set_dir, 
                                                'aligned', file_name, file_name+'_aligned',
                                                name) for name in img_names])

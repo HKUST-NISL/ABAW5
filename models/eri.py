@@ -66,7 +66,7 @@ class ERI(LightningModule):
             feat_ch = 2048
 
         self.tokens = 1
-        # self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
+        self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, feat_ch))
         self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
 
         self.n_head = 8
