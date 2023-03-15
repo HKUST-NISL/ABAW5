@@ -72,10 +72,16 @@ class ERI(LightningModule):
         self.n_head = 8
         encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=2048, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.layer_norm = nn.LayerNorm(feat_ch)
 
         self.head = nn.Linear(feat_ch + 8, 7, bias=True)
-        # self.heads = nn.ModuleList([nn.Linear(feat_ch + 8, 1, bias=True) for i in range(self.tokens)])
-        
+
+        # self.head = nn.Sequential(
+        #     nn.Linear(feat_ch + 8, 256, bias=False),
+        #     nn.LayerNorm(256),
+        #     nn.Dropout(0.2),
+        #     nn.Linear(256, 7, bias=False),
+        # )
 
     def configure_optimizers(self):
 
