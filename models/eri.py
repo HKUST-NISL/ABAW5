@@ -66,8 +66,10 @@ class ERI(LightningModule):
             feat_ch = 2048
 
         self.tokens = 1
-        self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
-        self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
+        # self.pos_embedding = nn.Parameter(torch.randn(1, self.snippet_size + self.tokens, feat_ch))
+        # self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
+        self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, feat_ch))
+        self.reg_token = nn.Parameter(torch.zeros(1, 1, feat_ch))
 
         self.n_head = 8
         encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=1024, nhead=self.n_head)
@@ -119,6 +121,7 @@ class ERI(LightningModule):
         
         reg_token = torch.tile(self.reg_token, (b, self.tokens, 1))
         x = torch.cat([reg_token, x], dim=1)
+        x = x + self.pos_embedding
         x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
 
         x = x[:, 0]
