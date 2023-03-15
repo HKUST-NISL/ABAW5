@@ -106,13 +106,13 @@ def checkAllBlack(data_path):
                 names.append(dir_sub_vid_img)
                 videos.append(folder)
     df = pd.DataFrame(videos, names)
-    df.to_csv(data_path + 'blackImages_local.csv')
+    df.to_csv(data_path + 'blackImages.csv')
     print('black images: ', allBlack, allBlack/allImages)
 
 def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
     filenamePadding = 6
     df = pd.read_csv(blackImageFile)
-    videosToRedetect = set(df.iloc[:,1].tolist()) #[:10]
+    videosToRedetect = list(set(df.iloc[:,1].tolist()))[:10]
     face_aligner = FaceAligner()
 
     new_aligned_path = savePath + 're_aligned/'
@@ -131,6 +131,8 @@ def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
         vid = cv2.VideoCapture(videoPath + filename)
         ret, frame_ori = vid.read()
         frame = face_aligner.align_face(frame_ori)
+        frame = frame[..., ::-1]
+        frame_ori = frame_ori[..., ::-1]
         origins.append(frame_ori)
         realigned.append(frame)
 
@@ -159,6 +161,9 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
         filename = '0'*(5-len(str(file)))+str(file)+'.mp4'
         if not os.path.exists(new_aligned_path+filename[:-4]):
             os.mkdir(new_aligned_path+filename[:-4])
+        final_dir = new_aligned_path+filename[:-4] + '/'+filename[:-4]+'_aligned'
+        if not os.path.exists(final_dir):
+            os.mkdir(final_dir)
         vid = cv2.VideoCapture(videoPath + filename)
         index = 0
         while True:
@@ -169,13 +174,13 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
             frame = face_aligner.align_face(frame)
 
             indexStr = '0' * (filenamePadding - len(str(index))) + str(index)
-            name = new_aligned_path + filename[:-4] + '/frame_det_00_' + indexStr + '.jpg'
+            name = final_dir + '/frame_det_00_' + indexStr + '.jpg'
             cv2.imwrite(name, frame)
             index += 1
 
 
 if __name__ == '__main__':
-    reDetectFacesDrawExample('dataset/val/blackImages_local.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    reDetectFaces('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #checkAllBlack('dataset/train/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
