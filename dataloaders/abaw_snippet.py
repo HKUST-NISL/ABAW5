@@ -25,8 +25,9 @@ def create_transform(in_size=224):
     return transform   
 
 class Collator(object):
-    def __init__(self):
+    def __init__(self, flag=False):
         super().__init__()
+        self.flag = flag
 
     def __call__(self, data):
         '''
@@ -36,8 +37,11 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        batch_x['images'] = torch.stack([x['images'] for x in data])
-        batch_x['mask'] = torch.stack([x['mask'] for x in data])
+        if self.flag:
+            batch_x['images'] = torch.stack([x['images'] for x in data])
+            batch_x['mask'] = torch.stack([x['mask'] for x in data])
+        else:
+            batch_x['images'] = [x['images'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
@@ -102,14 +106,16 @@ class ABAWDataset(Dataset):
 
             # data_entry['videoPath'] = data_file
             data_entry['intensity'] = np.array(intensity)
-            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
-            diff_df = pd.read_csv(df_path, index_col=0)
-
-            scores = diff_df['1'].values
-            ind_orderd = np.argsort(scores).tolist()
-
+            
             names = diff_df.index.to_list()
-            img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
+            if self.snippet_size > 0:
+                df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
+                diff_df = pd.read_csv(df_path, index_col=0)
+                scores = diff_df['1'].values
+                ind_orderd = np.argsort(scores).tolist()
+                img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
+            else:
+                img_names = names
             image_paths = sorted([os.path.join(self.data_dir, self.set_dir, 
                                                'aligned', file_name, file_name+'_aligned',
                                                name) for name in img_names])
@@ -159,19 +165,20 @@ class ABAWDataset(Dataset):
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
         
-        tokens = 1
-        mask = torch.ones(self.snippet_size + tokens)
-        if len(inputs) < self.snippet_size:
-            mask[len(inputs) + tokens:] = 0
-            inputs.extend([torch.zeros(inputs[0].shape)] * (self.snippet_size - len(inputs)))
+        if self.snippet_size > 0:
+            tokens = 1
+            mask = torch.ones(self.snippet_size + tokens)
+            if len(inputs) < self.snippet_size:
+                mask[len(inputs) + tokens:] = 0
+                inputs.extend([torch.zeros(inputs[0].shape)] * (self.snippet_size - len(inputs)))
 
-        mask = torch.matmul(mask.view(-1, 1), mask.view(1, -1))
+            mask = torch.matmul(mask.view(-1, 1), mask.view(1, -1))
+            data['mask'] = mask.float()
 
         data['images'] = torch.cat(inputs, 0)
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
         data['intensity'] = intensity
-        data['mask'] = mask.float()
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 
@@ -200,7 +207,8 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
         test_set = ABAWDataset(1, **args)
-        collate_fn = Collator()
+        flag = args['snippet_size'] == 0
+        collate_fn = Collator(flag)
 
         self.train_loader = DataLoader(dataset=train_set,
                                        batch_size=args['batch_size'],

@@ -99,10 +99,11 @@ class ERI(LightningModule):
             lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=self.gamma)
             
         return [optimizer], [lr_scheduler]
-    
-    def forward_model(self, data):
+
+    def forward_model_mask(self, data):
         x = data['images'].to(self.device)
         age_con = data['age_con'].to(self.device)
+
         mask = data['mask'].to(self.device)
         mask = torch.cat([mask] * self.n_head, dim=0)
 
@@ -121,6 +122,38 @@ class ERI(LightningModule):
         x = x[:, 0]
         x = torch.cat([x, age_con], dim=-1)
         preds = torch.sigmoid(self.head(x))
+
+        return preds
+
+    def forward_model_seq(self, data):
+        x = data['images'].to(self.device)
+        age_con = data['age_con'].to(self.device)
+
+        for in range(len(x)):
+            if self.features == 'image':
+                n, c, h, w = x[i].shape
+                x = self.model(x.view(n, c, h, w)).view(n, -1)
+            else:
+                b, n, c = x.shape
+
+            x = x.reshape(b, n, -1)
+            
+            reg_token = torch.tile(self.reg_token, (b, self.tokens, 1))
+            x = torch.cat([reg_token, x], dim=1)
+            x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
+
+            x = x[:, 0]
+            x = torch.cat([x, age_con], dim=-1)
+            preds = torch.sigmoid(self.head(x))
+
+        return preds
+    
+    def forward_model(self, data):
+        
+        if self.snippet_size > 0:
+            preds = self.forward_model_mask(data)
+        else:
+            preds = self.forward_model_seq(data)
 
         return preds
     
