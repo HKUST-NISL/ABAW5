@@ -143,7 +143,7 @@ class ERI(LightningModule):
         # mask[losses > quantile] = 2.
 
         # noisy samples
-        quantile = torch.quantile(losses, 0.95, interpolation='nearest')
+        quantile = torch.quantile(losses, 0.98, interpolation='nearest')
         mask[losses > quantile] = 0.5
         return mask
     
