@@ -64,6 +64,7 @@ class ABAWDataset(Dataset):
         #realigned_data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 're_aligned')
         csv = dataset_folder_path + '/' + indexList[trainIndex] + '/blackImages_before.csv'
         realignFailedVideos = getListOfRealignedVideos(csv)
+        self.MINIMUM_VIDEO_LENGTH = 50
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         self.sampling_strategy = SamplingStrategy(os.path.join(dataset_folder_path, indexList[trainIndex], 'MaE_score'), sampling_choice=args['sampling_strategy'])
@@ -111,6 +112,7 @@ class ABAWDataset(Dataset):
             folder = data_file.split('/')[-1]
             if args['load_feature'] == 'False':
                 print('TO IMPLEMENT: check if read images from aligned or realigned')
+                quit()
                 image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
             else:
                 if int(folder) in realignFailedVideos:
@@ -145,19 +147,31 @@ class ABAWDataset(Dataset):
         # image_path = image_entry['path']
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
-        # todo: check if image_path is []
-        # todo: check if image less than 50
-        # todo: check val
+        if len(image_paths) <= self.MINIMUM_VIDEO_LENGTH:
+            print(vid_name, ', no image found')
+            pass
+
+        print(image_paths[0])
+        if 'realigned' in image_paths[0]:
+            realigned = True
+        else:
+            realigned = False
+        print('realigned is: ', realigned)
 
         video_entry = self.video_dict[vid_name]
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
         inputs = []
         for path in sel_paths:
             if self.args['load_feature'] == 'False':
+                print('NOT IMPLEMENTED')
+                quit()
                 input = self.transform(Image.open(path)).unsqueeze(0)
                 inputs.append(input)
             else:
-                featurePath = self.data_path_feature + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
+                if realigned:
+                    featurePath = self.data_path_feature_realigned + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
+                else:
+                    featurePath = self.data_path_feature + '/' + vid_name + '/' + path.split('/')[-1][:-4] + '.npy'
                 input = torch.from_numpy(np.load(featurePath)).unsqueeze(0)
                 inputs.append(input)
 
@@ -222,7 +236,8 @@ if __name__ == '__main__':
                              snippet_size=30,
                              sample_times=1,
                              sampling_strategy=1,
-                             load_feature='smm'
+                             load_feature='smm',
+                             num_workers=0
                              )
     for batch in tqdm(dataset.val_loader):
         pass
