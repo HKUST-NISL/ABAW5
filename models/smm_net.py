@@ -192,7 +192,7 @@ class SMMNet(nn.Module):
 
         self.emotion_classifiers = nn.ModuleList(emotion_classifiers)
 
-    def forward(self, x):
+    def forward(self, x, outputAU=False):
         # import pdb; pdb.set_trace()
         feature_maps = self.backbone_CNN(x)
         x1 = self.AU_attention_convs(feature_maps)
@@ -229,9 +229,13 @@ class SMMNet(nn.Module):
         if self.avg_features:
             EXPR_VA_metrics = EXPR_VA_metrics.mean(1)
 
-        
         EXPR_VA_metrics = EXPR_VA_metrics.flatten(1)
-        return EXPR_VA_metrics
+        if outputAU:
+            AU_metrics_with_labels = AU_metrics_with_labels.flatten(1)
+            output = torch.cat((EXPR_VA_metrics, AU_metrics_with_labels), dim=1)
+            return output
+        else:
+            return EXPR_VA_metrics
 
 
 

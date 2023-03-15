@@ -232,20 +232,45 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
                 break
             try:
                 frame = face_aligner.align_face(frame)
+                cv2.imshow('1',frame)
+                cv2.waitKey(0)
             except:
-                size = frame.shape
-                frame = np.zeros((size))
-                print(filename, name)
-
+                #size = frame.shape
+                #frame = np.zeros((size))
+                #print(filename, name)
+                index += 1
+                continue
             cv2.imwrite(name, frame)
             index += 1
 
 
+def drawOpenFaceAligned():
+    files = natsort.natsorted(glob.glob('dataset/train/aligned/*'))
+    images = []
+    names = []
+    for i in tqdm(range(len(files))):
+        dir_sub = files[i]
+        folder = dir_sub.split('/')[-1]
+        names.append(folder)
+        image_path = dir_sub + '/' + folder + '_aligned'
+        imageFiles = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+        image = cv2.imread(imageFiles[0], 1)
+        images.append(image)
+    f, axarr = plt.subplots(2, 4)
+    for i in range(2):
+        for j in range(4):
+            axarr[i, j].imshow(images[i * 4 + j])
+            axarr[i, j].set_title(names[i * 4 + j])
+            axarr[i, j].set_axis_off()
+    plt.show()
+
+
 if __name__ == '__main__':
-    #reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    reDetectFaces('dataset/val/blackImages_before.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
+    #drawOpenFaceAligned()
 
-    checkAllBlackAfterRealign('dataset/train/blackImages_before.csv', 'dataset/train/', 'blackImages_realigned')
+    #checkAllBlackAfterRealign('dataset/train/blackImages_before.csv', 'dataset/train/', 'blackImages_realigned')
     # deleteBlackImagesRealign('dataset/train/')

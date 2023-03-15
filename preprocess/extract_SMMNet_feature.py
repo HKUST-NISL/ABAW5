@@ -16,8 +16,6 @@ from torchvision import transforms
 from PIL import Image
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# todo: run all the features
-# todo 2: only run realigned
 
 dataset_path = "dataset/"
 ckpt_path = 'pretrained/model-epoch=07-val_total=1.54.ckpt'
@@ -33,11 +31,7 @@ with open(ckpt_path, 'rb') as f:
 weights = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
 net.load_state_dict(weights)'''
 
-dataset = ABAWDataModule_all_images(data_dir=dataset_path,
-                                        batch_size=250,
-                                        input_size=299,
-                                        load_feature=False
-                                        )
+dataset = ABAWDataModule_all_images(data_dir=dataset_path, batch_size=2, input_size=299, load_feature='False')
 
 def getListOfRealignedVideos(blackImageFile):
     df = pd.read_csv(blackImageFile)
@@ -54,8 +48,11 @@ def create_transform(in_size=299):
 
     return transform
 
-def extract_train_all():
-    saving_dir = dataset_path + 'train/features/'
+def extract_train_all(AU_feature=True):
+    if AU_feature:
+        saving_dir = dataset_path + 'train/AU_features/'
+    else:
+        saving_dir = dataset_path + 'train/features/'
     if not os.path.exists(saving_dir):
         os.mkdir(saving_dir)
     for batch in tqdm(dataset.train_loader):
@@ -63,7 +60,7 @@ def extract_train_all():
         vid = batch[0]['vid']
         imagePath = batch[0]['imagePath']
         with torch.no_grad():
-            features = net(image)[:, :, 0, 0]  # size: 64, 272
+            features = net(image, outputAU=AU_feature)[:, :, 0, 0]  # size: 64, 272
 
         for i in range(features.size()[0]):
             feature = features[i].cpu().detach().numpy()
@@ -74,8 +71,11 @@ def extract_train_all():
             np.save(final_dir, feature)
         del image, features
 
-def extract_val_all():
-    saving_dir = dataset_path + 'val/features/'
+def extract_val_all(AU_feature=True):
+    if AU_feature:
+        saving_dir = dataset_path + 'val/AU_features/'
+    else:
+        saving_dir = dataset_path + 'val/features/'
     if not os.path.exists(saving_dir):
         os.mkdir(saving_dir)
     for batch in tqdm(dataset.val_loader):
@@ -83,7 +83,7 @@ def extract_val_all():
         vid = batch[0]['vid']
         imagePath = batch[0]['imagePath']
         with torch.no_grad():
-            features = net(image)[:, :, 0, 0]  # size: 64, 272
+            features = net(image, outputAU=True)[:, :, 0, 0]  # size: 64, 272
 
         for i in range(features.size()[0]):
             feature = features[i].cpu().detach().numpy()
@@ -127,8 +127,9 @@ def extract_realigned(choice):
             final_dir = folder_dir + '/' + file
             np.save(final_dir, feature)
 
-extract_realigned('train')
-extract_realigned('val')
-
+#extract_realigned('train')
+#extract_realigned('val')
+extract_train_all(True)
+extract_val_all(True)
 
 

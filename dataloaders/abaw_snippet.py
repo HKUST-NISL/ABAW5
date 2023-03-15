@@ -148,15 +148,12 @@ class ABAWDataset(Dataset):
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
         if len(image_paths) <= self.MINIMUM_VIDEO_LENGTH:
-            print(vid_name, ', no image found')
             pass
 
-        print(image_paths[0])
         if 'realigned' in image_paths[0]:
             realigned = True
         else:
             realigned = False
-        print('realigned is: ', realigned)
 
         video_entry = self.video_dict[vid_name]
         sel_paths = self.sampling_strategy.get_sampled_paths(image_paths, self.snippet_size)
@@ -230,7 +227,9 @@ class ABAWDataModule_snippet(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-    dataset = ABAWDataModule_snippet(data_dir="./dataset/",
+    a = getListOfRealignedVideos('dataset/train/blackImages_before.csv')
+    print(len(a))
+    '''dataset = ABAWDataModule_snippet(data_dir="./dataset/",
                              batch_size=2,
                              input_size=299,
                              snippet_size=30,
@@ -244,6 +243,6 @@ if __name__ == '__main__':
     for batch in tqdm(dataset.train_loader):
         pass
     for batch in tqdm(dataset.test_loader):
-        pass
+        pass'''
 
 
