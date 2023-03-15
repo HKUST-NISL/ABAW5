@@ -58,7 +58,10 @@ class ERI(LightningModule):
         elif 'effnetb0' in self.features:
             # self.model = torch.nn.Identity()
             feat_ch = 1280
-        elif 'res' in self.features:
+        elif 'res18' in self.features:
+            # self.model = torch.nn.Identity()
+            feat_ch = 512
+        elif 'resnet50' in self.features:
             # self.model = torch.nn.Identity()
             feat_ch = 2048
 
@@ -67,7 +70,7 @@ class ERI(LightningModule):
         self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
 
         self.n_head = 8
-        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=2048, nhead=self.n_head)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=1024, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
         self.head = nn.Linear(feat_ch + 8, 7, bias=True)
