@@ -85,17 +85,56 @@ def check_worst_videos():
     plt.title('PCC Loss - val')
     plt.show()'''
 
+def visualizePCC7():
+    names = ['Adoration','Amusement','Anxiety','Disgust','Empathic-Pain','Fear','Surprise']
+    for i in range(7):
+        #i=0
+        plt.figure(i)
+        name = names[i]
+        labels = labels_val[:,i] #.flatten()
+        preds = preds_val[:,i] #.flatten()
+        labels = (labels - labels.mean())/labels.std()
+        preds = (preds - preds.mean()) / preds.std()
+        #res = labels * preds
+
+        plt.scatter(labels, preds, alpha=0.05)
+        plt.ylim(-5, 5)
+        plt.grid()
+
+        '''plt.hist(labels, bins=20, alpha = 0.5)
+        plt.hist(preds, bins=20, alpha = 0.5)
+        plt.ylim(0, 1800)'''
+
+        plt.xlim(-5, 5)
+        plt.title('val pcc visualization - '+name)
+        plt.xlabel('Ground truth')
+        plt.ylabel('Predicted')
+        #plt.show()
+        plt.savefig('pics/pcc-'+str(name))
+
+
 def visualizePCC():
-    plt.scatter(labels_val.flatten(), preds_val.flatten(), alpha=0.05)
-    plt.ylim(-0.1,1.2)
-    plt.xlim(-0.1,1.2)
-    plt.title('val pcc visualization (pcc loss)')
+    names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
+
+    labels = labels_val.flatten()
+    preds = preds_val.flatten()
+    labels = (labels - labels.mean()) / labels.std()
+    preds = (preds - preds.mean()) / preds.std()
+
+    plt.scatter(labels, preds, alpha=0.1/7)
+    plt.ylim(-3, 3)
+    plt.grid()
+
+    # plt.hist(labels, bins=20, alpha = 0.5)
+    # plt.hist(preds, bins=20, alpha = 0.5)
+
+    plt.xlim(-5, 5)
+    plt.title('val pcc visualization - all')
     plt.xlabel('Ground truth')
     plt.ylabel('Predicted')
-    plt.show()
+    #plt.show()
+    plt.savefig('pics/hist-pcc-all')
 
-def rotateVideo():
-    a=1
 
 def showImages(csvFile='train_results.csv', datasetFile='dataset/train/aligned/'):
     df = pd.read_csv(csvFile)
@@ -116,6 +155,6 @@ def showImages(csvFile='train_results.csv', datasetFile='dataset/train/aligned/'
     plt.savefig('./worst_performance_train')
 
 if __name__ == '__main__':
-    #visualizePCC() #also check another model, l2 loss
+    visualizePCC7()
     #check_worst_videos()
-    showImages()
+    #showImages()

@@ -39,7 +39,7 @@ class ERI(LightningModule):
             encoder_layer = nn.TransformerEncoderLayer(d_model=self.model.out_c, dim_feedforward=256, nhead=4)
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
             self.head = nn.Linear(self.model.out_c, 7, bias=False)
-        elif self.args['load_feature'] == 'smm':
+        elif self.args['load_feature'] == 'smm' or 'eff':
             # for first model: US
             encoder_layer = nn.TransformerEncoderLayer(d_model=272, dim_feedforward=256, nhead=4)
             self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
