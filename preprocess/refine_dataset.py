@@ -87,27 +87,43 @@ def saveOpticalFlowScores(save_path, data_path, useGpu):
             df.to_csv(save_path + '/' + folder + '.csv')
 
 
-def checkAllBlack(data_path):
+def checkAllBlack(data_path, saveName):
     files = natsort.natsorted(glob.glob(data_path + "aligned/*"))
     allBlack=0
     allImages=0
     names = []
     videos = []
+    videoNumber = 0
     for i in tqdm(range(len(files))):
         dir_sub = files[i]
         folder = dir_sub.split('/')[-1]
         image_path = dir_sub + '/' + folder + '_aligned'
         imageFiles = natsort.natsorted(glob.glob(image_path + "/frame*.jpg"))
+        isThisVideo = 0
         for dir_sub_vid_img in imageFiles:
             allImages += 1
             image = cv2.imread(dir_sub_vid_img, 1)
             if image.sum() == 0:
+                if isThisVideo == 0:
+                    isThisVideo = 1
                 allBlack += 1
                 names.append(dir_sub_vid_img)
                 videos.append(folder)
+        videoNumber += isThisVideo
     df = pd.DataFrame(videos, names)
-    df.to_csv(data_path + 'blackImages.csv')
-    print('black images: ', allBlack, allBlack/allImages)
+    df.to_csv(data_path + saveName + '.csv')
+    print('# black frames: ', allBlack, allBlack/allImages)
+    print('# black videos: ', videoNumber)
+
+def deleteUnwantedVideos(data_path,  csv_path):
+    df = pd.read_csv(csv_path)
+    videosToRedetect = set(df.iloc[:, 1].tolist())
+    for video in videosToRedetect:
+        frameLen = len(video) # length of frames given the video path
+        black_frames = df # black frames from the csv given the vid
+        # if > 50% is black, delete video
+        # otherwise delete these frames
+
 
 def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
     filenamePadding = 6
@@ -168,28 +184,24 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
         index = 0
         while True:
             ret, frame = vid.read()
+            indexStr = '0' * (filenamePadding - len(str(index))) + str(index)
+            name = final_dir + '/frame_det_00_' + indexStr + '.jpg'
             if not ret:
                 break
-            image_height, image_width, _ = frame.shape
             try:
                 frame = face_aligner.align_face(frame)
             except:
                 size = frame.shape
                 frame = np.zeros((size))
-                print(filename)
+                print(filename, name)
 
-            cv2.imshow('0', frame)
-            cv2.waitKey(0)
-
-            indexStr = '0' * (filenamePadding - len(str(index))) + str(index)
-            name = final_dir + '/frame_det_00_' + indexStr + '.jpg'
             cv2.imwrite(name, frame)
             index += 1
 
 
 if __name__ == '__main__':
-    reDetectFacesDrawExample('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
-    #checkAllBlack('dataset/train/')
+    #reDetectFacesDrawExample('dataset/val/blackImages.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    checkAllBlack('dataset/train/', 'blackImages_realigned')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
