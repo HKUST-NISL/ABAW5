@@ -77,8 +77,11 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
     for file in tqdm(os.listdir(directory)):
         filename = os.fsdecode(file)
         folder = filename[:-4]
-        if folder in already_saved:
+        if folder in already_saved: #todo: check
             continue
+
+        # todo delete
+        filename = '00062.mp4'
         if filename.endswith(".mp4"):
             vid = cv2.VideoCapture(dataset_folder_path + 'mp4/' + filename)
             index = 0
@@ -94,8 +97,8 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
                 indexStr = 'frame_det_00_' + '0' * (filenamePadding - len(str(index))) + str(index) + '.jpg'
                 names.append(indexStr)
                 index += 1
-            images = np.stack(images)#[:10]
-            #names = names[:10]
+            images = np.stack(images)[:10] #todo: delete
+            names = names[:10]
             output_images, output_names = fa.alignFaceFromImages(images, names)
             folder_dir = aligned_path + folder + '/'
             if not os.path.exists(folder_dir):
@@ -107,12 +110,13 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
                 continue
             for i in range(len(output_names)):
                 cv2.imwrite(folder_dir+output_names[i], output_images[i])
+            quit()
         else:
             continue
 
 
 if __name__ == "__main__":
-    extract_frames_realign(dataset_folder_path='./dataset/train/', aligned_path='./dataset/pipnet_align/train/')
+    extract_frames_realign(dataset_folder_path='/Users/adia/Desktop/abaw/datasets/train/', aligned_path='./dataset/pipnet_align/train/')
     #extract_frames_realign(dataset_folder_path='./dataset/val/')
     # /home/yini/OpenFace/build/bin/FeatureExtraction
     # /data/abaw5/val/

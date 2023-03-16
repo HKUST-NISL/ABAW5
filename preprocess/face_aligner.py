@@ -24,11 +24,11 @@ class FaceAligner:
         if self.desiredFaceHeight is None:
             self.desiredFaceHeight = self.desiredFaceWidth
         self.usePipnet = pipnet
-        if self.usePipnet:
-            self.pipnet = LandmarkDetection()
-        else:
-            self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False,
-                                                   device=device)
+        #if self.usePipnet:
+        self.pipnet = LandmarkDetection()
+        #else:
+        self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False,
+                                               device=device)
 
     def getLdmkFromBatch(self, batch):
         preds = self.fa.get_landmarks_from_batch(batch)
@@ -44,7 +44,7 @@ class FaceAligner:
             image = cv2.resize(image, (int(W/2), int(H/2)))
             images.append(image)
             names.append(file.split('/')[-1])
-        images = np.stack(images)[:10] #todo
+        images = np.stack(images)[:3] #todo
         names = names[:10]
         if not self.usePipnet:
             torch_images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
@@ -91,6 +91,7 @@ class FaceAligner:
             ldmks = self.getaLdmkFromImagesPipnet(images)
         else:
             ldmks = self.getLdmkFromImages(images)
+        print(ldmks)
         output_images = []
         output_names = []
         for i in range(len(ldmks)):
@@ -285,10 +286,10 @@ if __name__ == '__main__':
     import natsort
     import glob
     import torch
-    a = FaceAligner(batch_size=2, pipnet=True)
-    dir = 'dataset/train/images/02127/'
+    a = FaceAligner(batch_size=2, pipnet=False)
+    dir = 'dataset/train/images/00062/'
     output_images, output_names = a.alignFaceFromDir(dir)
-    save = 'dataset/train/re_aligned/02127/'
+    save = 'dataset/train/re_aligned/02127_2/'
     for i in range(len(output_names)):
         image = output_images[i]
         name = output_names[i]
