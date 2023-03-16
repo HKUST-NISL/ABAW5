@@ -67,7 +67,7 @@ def extract_frames_realign(dataset_folder_path='dataset/train/'):
     if not os.path.exists(aligned_path):
         os.mkdir(aligned_path)
     directory = os.fsencode(dataset_folder_path+'mp4/')
-    fa = FaceAligner(batch_size=64)
+    fa = FaceAligner(batch_size=16, pipnet=True)
     if not os.path.exists(aligned_path):
         os.mkdir(aligned_path)
         already_saved = []
@@ -87,10 +87,10 @@ def extract_frames_realign(dataset_folder_path='dataset/train/'):
             names = []
             while (True):
                 ret, frame = vid.read()
-                H, W, _ = frame.shape
-                frame = cv2.resize(frame, (int(W / 2), int(H / 2)))
                 if not ret:
                     break
+                #H, W, _ = frame.shape
+                #frame = cv2.resize(frame, (int(W / 2), int(H / 2)))
                 images.append(frame)
                 indexStr = 'frame_det_00_' + '0' * (filenamePadding - len(str(index))) + str(index) + '.jpg'
                 names.append(indexStr)

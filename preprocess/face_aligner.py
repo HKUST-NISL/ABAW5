@@ -9,10 +9,12 @@ import os
 from PIL import Image
 import scipy.ndimage
 import PIL.Image
+import time
+from PIPNet.lib.landmark_detection import LandmarkDetection
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 class FaceAligner:
-    def __init__(self, batch_size, desiredLeftEye=(0.35, 0.35), desiredFaceWidth=224, desiredFaceHeight=None):
+    def __init__(self, batch_size, pipnet, desiredLeftEye=(0.35, 0.35), desiredFaceWidth=224, desiredFaceHeight=None):
         self.batch_size = batch_size
         self.desiredLeftEye = desiredLeftEye
         self.desiredFaceWidth = desiredFaceWidth
@@ -21,8 +23,13 @@ class FaceAligner:
         # desired face width (normal behavior)
         if self.desiredFaceHeight is None:
             self.desiredFaceHeight = self.desiredFaceWidth
-        self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False,
-                                               device=device)
+        self.usePipnet = pipnet
+        if self.usePipnet:
+            self.pipnet = LandmarkDetection()
+        else:
+            self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False,
+                                                   device=device)
+
     def getLdmkFromBatch(self, batch):
         preds = self.fa.get_landmarks_from_batch(batch)
         return preds
@@ -38,12 +45,16 @@ class FaceAligner:
             images.append(image)
             names.append(file.split('/')[-1])
         images = np.stack(images)[:10] #todo
-        torch_images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
-        output_landmarks = []
-        for i in range(0, images.shape[0], self.batch_size):
-            image = torch_images[i:(i+self.batch_size)]
-            x = self.getLdmkFromBatch(image)
-            output_landmarks.extend(x)
+        names = names[:10]
+        if not self.usePipnet:
+            torch_images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
+            output_landmarks = []
+            for i in range(0, images.shape[0], self.batch_size):
+                image = torch_images[i:(i+self.batch_size)]
+                x = self.getLdmkFromBatch(image)
+                output_landmarks.extend(x)
+        else:
+            output_landmarks = self.getaLdmkFromImagesPipnet(images)
         return images, output_landmarks, names
 
     def getLdmkFromImages(self, images):
@@ -67,8 +78,19 @@ class FaceAligner:
             output_names.append(names[i])
         return output_images, output_names
 
+    def getaLdmkFromImagesPipnet(self, images):
+        ldmks = []
+        for i in range(images.shape[0]):
+            image = images[i]
+            ldmk = self.pipnet.get_landmarks(image)
+            ldmks.append(ldmk)
+        return ldmks
+
     def alignFaceFromImages(self, images, names):
-        ldmks = self.getLdmkFromImages(images)
+        if self.usePipnet:
+            ldmks = self.getaLdmkFromImagesPipnet(images)
+        else:
+            ldmks = self.getLdmkFromImages(images)
         output_images = []
         output_names = []
         for i in range(len(ldmks)):
@@ -126,7 +148,7 @@ class FaceAligner:
             quad -= crop[0:2]
 
         # Pad.
-        pad = (int(np.floor(min(quad[:, 0]))), int(np.floor(min(quad[:, 1]))), int(np.ceil(max(quad[:, 0]))),
+        '''pad = (int(np.floor(min(quad[:, 0]))), int(np.floor(min(quad[:, 1]))), int(np.ceil(max(quad[:, 0]))),
                int(np.ceil(max(quad[:, 1]))))
         pad = (max(-pad[0] + border, 0), max(-pad[1] + border, 0), max(pad[2] - img.size[0] + border, 0),
                max(pad[3] - img.size[1] + border, 0))
@@ -141,7 +163,7 @@ class FaceAligner:
             img += (scipy.ndimage.gaussian_filter(img, [blur, blur, 0]) - img) * np.clip(mask * 3.0 + 1.0, 0.0, 1.0)
             img += (np.median(img, axis=(0, 1)) - img) * np.clip(mask, 0.0, 1.0)
             img = PIL.Image.fromarray(np.uint8(np.clip(np.rint(img), 0, 255)), 'RGB')
-            quad += pad[:2]
+            quad += pad[:2]'''
         img = img.resize((output_size, output_size), PIL.Image.ANTIALIAS)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
@@ -263,7 +285,7 @@ if __name__ == '__main__':
     import natsort
     import glob
     import torch
-    a = FaceAligner(batch_size=2)
+    a = FaceAligner(batch_size=2, pipnet=True)
     dir = 'dataset/train/images/02127/'
     output_images, output_names = a.alignFaceFromDir(dir)
     save = 'dataset/train/re_aligned/02127/'
