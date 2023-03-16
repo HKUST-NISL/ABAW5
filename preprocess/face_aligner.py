@@ -45,12 +45,12 @@ class FaceAligner:
         return images, output_landmarks, names
 
     def getLdmkFromImages(self, images):
-        torch_images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
         output_landmarks = []
         for i in range(0, images.shape[0], self.batch_size):
-            image = torch_images[i:(i+self.batch_size)]
-            x = self.getLdmkFromBatch(image)
+            torch_images = torch.from_numpy(images[i:(i+self.batch_size)]).to(device).permute(0, 3, 1, 2)
+            x = self.getLdmkFromBatch(torch_images)
             output_landmarks.extend(x)
+            del torch_images
         return output_landmarks
 
     def alignFaceFromDir(self, dir):
