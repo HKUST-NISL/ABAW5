@@ -60,7 +60,7 @@ def extract_train_all(AU_feature=True):
         vid = batch[0]['vid']
         imagePath = batch[0]['imagePath']
         with torch.no_grad():
-            features = net(image, outputAU=AU_feature)[:, :, 0, 0]  # size: 64, 272
+            features = net(image, outputAU=AU_feature) #[:, :, 0, 0]  # size: 64, 272
 
         for i in range(features.size()[0]):
             feature = features[i].cpu().detach().numpy()
@@ -83,7 +83,7 @@ def extract_val_all(AU_feature=True):
         vid = batch[0]['vid']
         imagePath = batch[0]['imagePath']
         with torch.no_grad():
-            features = net(image, outputAU=True)[:, :, 0, 0]  # size: 64, 272
+            features = net(image, outputAU=True) #[:, :, 0, 0]  # size: 64, 272
 
         for i in range(features.size()[0]):
             feature = features[i].cpu().detach().numpy()

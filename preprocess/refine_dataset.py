@@ -211,7 +211,7 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
     videosToRedetect = set(df.iloc[:,1].tolist())
     face_aligner = FaceAligner()
 
-    new_aligned_path = savePath + 're_aligned/'
+    new_aligned_path = savePath  #+ 're_aligned/'
     if not os.path.exists(new_aligned_path):
         os.mkdir(new_aligned_path)
 
@@ -232,16 +232,15 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
                 break
             try:
                 frame = face_aligner.align_face(frame)
-                cv2.imshow('1',frame)
-                cv2.waitKey(0)
+                cv2.imwrite(name, frame)
+                index += 1
             except:
                 #size = frame.shape
                 #frame = np.zeros((size))
                 #print(filename, name)
                 index += 1
                 continue
-            cv2.imwrite(name, frame)
-            index += 1
+
 
 
 def drawOpenFaceAligned():
@@ -266,7 +265,7 @@ def drawOpenFaceAligned():
 
 
 if __name__ == '__main__':
-    reDetectFaces('dataset/val/blackImages_before.csv', 'dataset/val/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    reDetectFaces('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
