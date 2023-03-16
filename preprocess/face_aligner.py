@@ -91,16 +91,17 @@ class FaceAligner:
             ldmks = self.getaLdmkFromImagesPipnet(images)
         else:
             ldmks = self.getLdmkFromImages(images)
-        print(ldmks)
         output_images = []
         output_names = []
+        output_ldmk = []
         for i in range(len(ldmks)):
             if ldmks[i] == []:
                 continue
             cropped = self.alignFaceOneImage(images[i], ldmks[i])
             output_images.append(cropped)
             output_names.append(names[i])
-        return output_images, output_names
+            output_ldmk.append(ldmks[i])
+        return output_images, output_names, output_ldmk
 
     def alignFaceOneImage(self, img, face_landmarks, output_size=224, enable_padding=False):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

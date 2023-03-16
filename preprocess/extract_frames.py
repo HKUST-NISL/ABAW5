@@ -7,6 +7,7 @@ from pathlib import Path
 from face_aligner import FaceAligner
 import natsort
 import glob
+import pandas as pd
 
 def extract_frames_openface(dataset_folder_path='dataset/train/',
                    fe_path='/home/yfangba/Workspace/openface/OpenFace/build/bin/FeatureExtraction'):
@@ -60,11 +61,14 @@ def extract_frames_openface(dataset_folder_path='dataset/train/',
     #delete_folder(dataset_folder_path + 'images')
 
 
-def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='dataset/pipnet_align/train/'):
+def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='dataset/pipnet_align/train/',
+                           ldmk_path='./data/pipnet_align/landmarks/train/'):
     # todo: format xxxx/xxxx_aligned/.jpg
     filenamePadding = 5
     if not os.path.exists(aligned_path):
         os.mkdir(aligned_path)
+    if not os.path.exists(ldmk_path):
+        os.mkdir(ldmk_path)
     directory = os.fsencode(dataset_folder_path+'mp4/')
     fa = FaceAligner(batch_size=16, pipnet=True)
     if not os.path.exists(aligned_path):
@@ -72,16 +76,14 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
         already_saved = []
     else:
         already_saved = natsort.natsorted(glob.glob(aligned_path+'/*'))
-        already_saved = [x.split('/')[-1][:-4] for x in already_saved]
+        already_saved = [x.split('/')[-1] for x in already_saved]
 
     for file in tqdm(os.listdir(directory)):
         filename = os.fsdecode(file)
         folder = filename[:-4]
-        if folder in already_saved: #todo: check
+        if folder in already_saved:
             continue
 
-        # todo delete
-        filename = '00062.mp4'
         if filename.endswith(".mp4"):
             vid = cv2.VideoCapture(dataset_folder_path + 'mp4/' + filename)
             index = 0
@@ -97,12 +99,23 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
                 indexStr = 'frame_det_00_' + '0' * (filenamePadding - len(str(index))) + str(index) + '.jpg'
                 names.append(indexStr)
                 index += 1
-            images = np.stack(images)[:10] #todo: delete
-            names = names[:10]
-            output_images, output_names = fa.alignFaceFromImages(images, names)
+            images = np.stack(images) #[:10] #todo: delete
+            #names = names[:10]
+            output_images, output_names, output_landmarks = fa.alignFaceFromImages(images, names)
             folder_dir = aligned_path + folder + '/'
             if not os.path.exists(folder_dir):
                 os.mkdir(folder_dir)
+
+            if output_landmarks is not []:
+                H, W, _ = images[0].shape
+                output_landmarks = np.array(output_landmarks, dtype=float)
+                output_landmarks[:,:,0] /= float(W)
+                output_landmarks[:,:,1] /= float(H)
+                output_landmarks[:, :, [0, 1]] = output_landmarks[:, :, [1, 0]]
+
+                df = pd.DataFrame(output_landmarks.reshape(-1, 68*2), output_names) #68,2 -> flatten
+                df.to_csv(ldmk_path + '/' + folder + '.csv')
+
             folder_dir = aligned_path + folder + '/' + folder + '_aligned/'
             if not os.path.exists(folder_dir):
                 os.mkdir(folder_dir)
@@ -110,13 +123,67 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
                 continue
             for i in range(len(output_names)):
                 cv2.imwrite(folder_dir+output_names[i], output_images[i])
-            quit()
         else:
             continue
 
 
+def extract_frames_realign_check_missing(dataset_folder_path='dataset/train/', aligned_path='dataset/pipnet_align/train/',
+                           ldmk_path='./data/pipnet_align/landmarks/train/'):
+    # todo: format xxxx/xxxx_aligned/.jpg
+    filenamePadding = 5
+
+    directory = os.fsencode(dataset_folder_path + 'mp4/')
+    fa = FaceAligner(batch_size=16, pipnet=True)
+    if not os.path.exists(ldmk_path):
+        os.mkdir(ldmk_path)
+        already_saved = []
+    else:
+        already_saved = natsort.natsorted(glob.glob(ldmk_path + '/*.csv'))
+        already_saved = [x.split('/')[-1][:-4] for x in already_saved]
+
+    for file in tqdm(os.listdir(directory)):
+        filename = os.fsdecode(file)
+        folder = filename[:-4]
+        if folder in already_saved:
+            continue
+
+        if filename.endswith(".mp4"):
+            vid = cv2.VideoCapture(dataset_folder_path + 'mp4/' + filename)
+            index = 0
+            images = []
+            names = []
+            while (True):
+                ret, frame = vid.read()
+                if not ret:
+                    break
+                # H, W, _ = frame.shape
+                # frame = cv2.resize(frame, (int(W / 2), int(H / 2)))
+                images.append(frame)
+                indexStr = 'frame_det_00_' + '0' * (filenamePadding - len(str(index))) + str(index) + '.jpg'
+                names.append(indexStr)
+                index += 1
+            images = np.stack(images)  # [:10] #todo: delete
+            # names = names[:10]
+            output_images, output_names, output_landmarks = fa.alignFaceFromImages(images, names)
+            if output_landmarks is not []:
+                H, W, _ = images[0].shape
+                output_landmarks = np.array(output_landmarks, dtype=float)
+                output_landmarks[:, :, 0] /= float(W)
+                output_landmarks[:, :, 1] /= float(H)
+                output_landmarks[:, :, [0, 1]] = output_landmarks[:, :, [1, 0]]
+
+                df = pd.DataFrame(output_landmarks.reshape(-1, 68 * 2), output_names)  # 68,2 -> flatten
+                df.to_csv(ldmk_path + '/' + folder + '.csv')
+        else:
+            continue
+
 if __name__ == "__main__":
-    extract_frames_realign(dataset_folder_path='/Users/adia/Desktop/abaw/datasets/train/', aligned_path='./dataset/pipnet_align/train/')
+    extract_frames_realign(dataset_folder_path='/Users/adia/Desktop/abaw/datasets/train/',
+                           aligned_path='./dataset/pipnet_align/train/',
+                           ldmk_path='./dataset/pipnet_align/landmarks/train/')
+    extract_frames_realign_check_missing(dataset_folder_path='/Users/adia/Desktop/abaw/datasets/train/',
+                           aligned_path='./dataset/pipnet_align/train/',
+                           ldmk_path='./dataset/pipnet_align/landmarks/train/')
     #extract_frames_realign(dataset_folder_path='./dataset/val/')
     # /home/yini/OpenFace/build/bin/FeatureExtraction
     # /data/abaw5/val/

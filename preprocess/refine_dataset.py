@@ -171,7 +171,7 @@ def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
     filenamePadding = 6
     df = pd.read_csv(blackImageFile)
     videosToRedetect = list(set(df.iloc[:,1].tolist()))[:10]
-    face_aligner = FaceAligner()
+    face_aligner = FaceAligner(batch_size=2, pipnet=True)
 
     new_aligned_path = savePath + 're_aligned/'
     if not os.path.exists(new_aligned_path):
@@ -189,9 +189,17 @@ def reDetectFacesDrawExample(blackImageFile, savePath, videoPath):
         vid = cv2.VideoCapture(videoPath + filename)
         ret, frame_ori = vid.read()
         frame = face_aligner.align_face(frame_ori)
+
+        ycrcb_img = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
+        #ycrcb_img[:, :, 0] = cv2.equalizeHist(ycrcb_img[:, :, 0])
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        ycrcb_img = clahe.apply(ycrcb_img)
+        frame = cv2.cvtColor(ycrcb_img, cv2.COLOR_YCrCb2BGR)
+
+
         frame = frame[..., ::-1]
-        frame_ori = frame_ori[..., ::-1]
-        origins.append(frame_ori)
+        #frame_ori = frame_ori[..., ::-1]
+        #origins.append(frame_ori)
         realigned.append(frame)
 
     imgs = realigned
@@ -295,7 +303,7 @@ def compareTwoAlignedFaces():
 if __name__ == '__main__':
     #compareTwoAlignedFaces()
     #effectNetExample()
-    reDetectFaces('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
