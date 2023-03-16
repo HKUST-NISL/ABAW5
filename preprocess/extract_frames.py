@@ -87,6 +87,8 @@ def extract_frames_realign(dataset_folder_path='dataset/train/'):
             names = []
             while (True):
                 ret, frame = vid.read()
+                H, W, _ = frame.shape
+                frame = cv2.resize(frame, (int(W / 2), int(H / 2)))
                 if not ret:
                     break
                 images.append(frame)

@@ -33,13 +33,15 @@ class FaceAligner:
         names = []
         for file in files:
             image = cv2.imread(file)
+            H, W, _ = image.shape
+            image = cv2.resize(image, (int(W/2), int(H/2)))
             images.append(image)
             names.append(file.split('/')[-1])
-        images = np.stack(images)
-        images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
+        images = np.stack(images)[:10] #todo
+        torch_images = torch.from_numpy(images).to(device).permute(0, 3, 1, 2)
         output_landmarks = []
         for i in range(0, images.shape[0], self.batch_size):
-            image = images[i:(i+self.batch_size)]
+            image = torch_images[i:(i+self.batch_size)]
             x = self.getLdmkFromBatch(image)
             output_landmarks.extend(x)
         return images, output_landmarks, names
