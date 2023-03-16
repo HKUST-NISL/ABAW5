@@ -108,17 +108,15 @@ class ABAWDataset(Dataset):
             data_entry['intensity'] = np.array(intensity)
             df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
             diff_df = pd.read_csv(df_path, index_col=0)
+            scores = diff_df['1'].values
+            ind_orderd = np.argsort(scores).tolist()[::-1]
             
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
-                scores = diff_df['1'].values
-                ind_orderd = np.argsort(scores).tolist()
                 img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             else:
                 max_len = 800
                 if len(names) > max_len:
-                    scores = diff_df['1'].values
-                    ind_orderd = np.argsort(scores).tolist()
                     img_names = [ names[ind] for ind in ind_orderd[:max_len]] 
                 else:
                     img_names = names
