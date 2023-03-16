@@ -60,10 +60,9 @@ def extract_frames_openface(dataset_folder_path='dataset/train/',
     #delete_folder(dataset_folder_path + 'images')
 
 
-def extract_frames_realign(dataset_folder_path='dataset/train/'):
+def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='dataset/pipnet_align/train/'):
     # todo: format xxxx/xxxx_aligned/.jpg
     filenamePadding = 5
-    aligned_path = dataset_folder_path + 'realigned/'
     if not os.path.exists(aligned_path):
         os.mkdir(aligned_path)
     directory = os.fsencode(dataset_folder_path+'mp4/')
@@ -113,7 +112,7 @@ def extract_frames_realign(dataset_folder_path='dataset/train/'):
 
 
 if __name__ == "__main__":
-    extract_frames_realign(dataset_folder_path='./dataset/train/')
+    extract_frames_realign(dataset_folder_path='./dataset/train/', aligned_path='./dataset/pipnet_align/train/')
     #extract_frames_realign(dataset_folder_path='./dataset/val/')
     # /home/yini/OpenFace/build/bin/FeatureExtraction
     # /data/abaw5/val/
