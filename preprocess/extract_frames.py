@@ -4,8 +4,11 @@ from extract_utils import face_alignment, convert_directory_to_image_file, delet
 from tqdm import tqdm
 import numpy as np
 from pathlib import Path
+from face_aligner import FaceAligner
+import natsort
+import glob
 
-def extract_frames(dataset_folder_path='dataset/train/',
+def extract_frames_openface(dataset_folder_path='dataset/train/',
                    fe_path='/home/yfangba/Workspace/openface/OpenFace/build/bin/FeatureExtraction'):
     filenamePadding = 5
     aligned_path = dataset_folder_path + 'aligned/'
@@ -56,8 +59,59 @@ def extract_frames(dataset_folder_path='dataset/train/',
     #delete_folder(aligned_path)
     #delete_folder(dataset_folder_path + 'images')
 
+
+def extract_frames_realign(dataset_folder_path='dataset/train/'):
+    # todo: format xxxx/xxxx_aligned/.jpg
+    filenamePadding = 5
+    aligned_path = dataset_folder_path + 'realigned/'
+    if not os.path.exists(aligned_path):
+        os.mkdir(aligned_path)
+    directory = os.fsencode(dataset_folder_path+'mp4/')
+    fa = FaceAligner(batch_size=64)
+    if not os.path.exists(aligned_path):
+        os.mkdir(aligned_path)
+        already_saved = []
+    else:
+        already_saved = natsort.natsorted(glob.glob(aligned_path+'/*'))
+        already_saved = [x.split('/')[-1][:-4] for x in already_saved]
+
+    for file in tqdm(os.listdir(directory)):
+        filename = os.fsdecode(file)
+        folder = filename[:-4]
+        if folder in already_saved:
+            continue
+        if filename.endswith(".mp4"):
+            vid = cv2.VideoCapture(dataset_folder_path + 'mp4/' + filename)
+            index = 0
+            images = []
+            names = []
+            while (True):
+                ret, frame = vid.read()
+                if not ret:
+                    break
+                images.append(frame)
+                indexStr = 'frame_det_00_' + '0' * (filenamePadding - len(str(index))) + str(index) + '.jpg'
+                names.append(indexStr)
+                index += 1
+            images = np.stack(images)#[:10]
+            #names = names[:10]
+            output_images, output_names = fa.alignFaceFromImages(images, names)
+            folder_dir = aligned_path + folder + '/'
+            if not os.path.exists(folder_dir):
+                os.mkdir(folder_dir)
+            folder_dir = aligned_path + folder + '/' + folder + '_aligned/'
+            if not os.path.exists(folder_dir):
+                os.mkdir(folder_dir)
+            if len(output_names) == 0:
+                continue
+            for i in range(len(output_names)):
+                cv2.imwrite(folder_dir+output_names[i], output_images[i])
+        else:
+            continue
+
+
 if __name__ == "__main__":
-    extract_frames(dataset_folder_path='./dataset/train/')
-    extract_frames(dataset_folder_path='./dataset/val/')
+    extract_frames_realign(dataset_folder_path='./dataset/train/')
+    #extract_frames_realign(dataset_folder_path='./dataset/val/')
     # /home/yini/OpenFace/build/bin/FeatureExtraction
     # /data/abaw5/val/

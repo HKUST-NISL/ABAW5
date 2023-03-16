@@ -35,6 +35,7 @@ class Collator(object):
         :return: batch_x torch.tensor{'images': bs, imgRandomLen, 299, 299, 3; 'age': bs; 'country': bs},
         batch_y torch.tensor: bs, 7;
         '''
+        data.append({}) #todo: how to deal with empty entry
         batch_x = {}
         batch_x['images'] = [x['images'] for x in data] #torch.stack([x['images'] for x in data])
         batch_x['age'] = torch.stack([x['age'] for x in data])
@@ -147,11 +148,14 @@ class ABAWDataset(Dataset):
         # image_path = image_entry['path']
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
+
+        # todo: check if image path is empty
         if len(image_paths) <= self.MINIMUM_VIDEO_LENGTH:
-            pass
+            return data
 
         if 'realigned' in image_paths[0]:
             realigned = True
+            return data
         else:
             realigned = False
 
@@ -227,9 +231,7 @@ class ABAWDataModule_snippet(pl.LightningDataModule):
 
 
 if __name__ == '__main__':
-    a = getListOfRealignedVideos('dataset/train/blackImages_before.csv')
-    print(len(a))
-    '''dataset = ABAWDataModule_snippet(data_dir="./dataset/",
+    dataset = ABAWDataModule_snippet(data_dir="./dataset/",
                              batch_size=2,
                              input_size=299,
                              snippet_size=30,
@@ -243,6 +245,6 @@ if __name__ == '__main__':
     for batch in tqdm(dataset.train_loader):
         pass
     for batch in tqdm(dataset.test_loader):
-        pass'''
+        pass
 
 

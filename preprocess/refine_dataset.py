@@ -242,7 +242,6 @@ def reDetectFaces(blackImageFile, savePath, videoPath):
                 continue
 
 
-
 def drawOpenFaceAligned():
     files = natsort.natsorted(glob.glob('dataset/train/aligned/*'))
     images = []
@@ -263,8 +262,39 @@ def drawOpenFaceAligned():
             axarr[i, j].set_axis_off()
     plt.show()
 
+def effectNetExample():
+    files = natsort.natsorted(glob.glob('dataset/effectNetExample/*'))
+    images = []
+    names = []
+    for i in tqdm(range(len(files))):
+        image = cv2.imread(files[i], 1)
+        image = image[..., ::-1]
+        images.append(image)
+        names.append(files[i].split('/')[-1])
+    f, axarr = plt.subplots(2, 5)
+    for i in range(2):
+        for j in range(5):
+            axarr[i, j].imshow(images[i * 5 + j])
+            axarr[i, j].set_title(names[i * 5 + j])
+            axarr[i, j].set_axis_off()
+    plt.show()
+
+def compareTwoAlignedFaces():
+    face_aligner = FaceAligner()
+    a1 = cv2.imread('dataset/original.jpg')
+    aligned_n = face_aligner.align_face(a1)
+    #cv2.imshow('0', aligned_n)
+    #cv2.waitKey(0)
+    aligned_e = cv2.imread('dataset/effectNetExample/24.jpg')
+    print('our align')
+    face_aligner.get_info(aligned_n)
+    print('effectnet align')
+    face_aligner.get_info(aligned_e)
+
 
 if __name__ == '__main__':
+    #compareTwoAlignedFaces()
+    #effectNetExample()
     reDetectFaces('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
