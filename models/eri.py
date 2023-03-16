@@ -178,12 +178,11 @@ class ERI(LightningModule):
             x_t = torch.cat([reg_token, x], dim=1)
             x_t = self.transformer(x_t.permute(1, 0, 2)).permute(1, 0, 2)
 
-            x_t1 = x[:, 0]
+            x_t1 = x_t[:, 0]
             # x_t2 = torch.sum(x_t[:, 1:] * attn.permute(0, 2, 1), dim=1)
             x = x_t1
             
             # x_r, ho = self.rnn(x.permute(1, 0, 2))
-
             # x = torch.cat([x_t1, x_r[-1]], dim=-1)
 
             feats.append(x)
