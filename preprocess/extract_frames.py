@@ -106,7 +106,7 @@ def extract_frames_realign(dataset_folder_path='dataset/train/', aligned_path='d
             if not os.path.exists(folder_dir):
                 os.mkdir(folder_dir)
 
-            if output_landmarks is not []:
+            if len(output_landmarks) != 0:
                 H, W, _ = images[0].shape
                 output_landmarks = np.array(output_landmarks, dtype=float)
                 output_landmarks[:,:,0] /= float(W)
@@ -165,7 +165,7 @@ def extract_frames_realign_check_missing(dataset_folder_path='dataset/train/', a
             images = np.stack(images)  # [:10] #todo: delete
             # names = names[:10]
             output_images, output_names, output_landmarks = fa.alignFaceFromImages(images, names)
-            if output_landmarks is not []:
+            if len(output_landmarks) != 0:
                 H, W, _ = images[0].shape
                 output_landmarks = np.array(output_landmarks, dtype=float)
                 output_landmarks[:, :, 0] /= float(W)

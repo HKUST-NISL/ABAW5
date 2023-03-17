@@ -299,11 +299,46 @@ def compareTwoAlignedFaces():
     print('effectnet align')
     face_aligner.get_info(aligned_e)
 
+def checkPipnetAlignedFrames(openface_aligned_dir, pipnet_aligned_dir,
+                             landmark_dir):
+    openface_files = natsort.natsorted(glob.glob(openface_aligned_dir+'*'))
+    pipnet_files = natsort.natsorted(glob.glob(pipnet_aligned_dir+'*'))
+    landmark_files = natsort.natsorted(glob.glob(landmark_dir+'*'))
+    openface = []
+    for o in openface_files:
+        folder = o.split('/')[-1]
+        x = len(natsort.natsorted(glob.glob(o+'/'+folder+'_aligned/*')))
+        openface.append(x)
+    pipnet = []
+    for o in pipnet_files:
+        folder = o.split('/')[-1]
+        x = len(natsort.natsorted(glob.glob(o + '/' + folder + '_aligned/*')))
+        pipnet.append(x)
+    landmarks = []
+    for o in landmark_files:
+        df = pd.read_csv(o)
+        x = len(df.columns)
+        landmarks.append(x)
+    len_openface = len(openface)
+    sum_openface = np.sum(openface)
+    len_pipnet = len(pipnet)
+    sum_pipnet = np.sum(pipnet)
+    len_landmarks = len(landmarks)
+    sum_landmarks = np.sum(landmarks)
+    print('len openface ', len_openface)
+    print('sum openface ', sum_openface)
+    print('len pipnet ', len_pipnet)
+    print('sum pipnet ', sum_pipnet)
+    print('len landmarks ', len_landmarks)
+    print('sum landmarks ', sum_landmarks)
+
 
 if __name__ == '__main__':
+    checkPipnetAlignedFrames('dataset/train/aligned/', 'dataset/pipnet_align/train/',
+                             'dataset/pipnet_align/landmarks/train/')
     #compareTwoAlignedFaces()
     #effectNetExample()
-    reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
+    #reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')
     #saveOpticalFlowScores('dataset/optical_flow/train/', 'dataset/train/', False)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/train/', '/data/abaw5/train/', True)
     #saveOpticalFlowScores('/data/abaw5/optical_flow/val/', '/data/abaw5/val/', True)
