@@ -50,7 +50,7 @@ if __name__ == '__main__':
             if 'classifier' not in key:
                 ckpt_new[key] = ckpt[key]
         net.load_state_dict(ckpt_new)
-        out_name = sys.argv[1]+'_features'
+        out_name = sys.argv[1]+'_pip_features'
         in_size = 224
     elif sys.argv[1] == 'effnetb0_raf':
         net = effnetb0().to(device)
@@ -72,7 +72,7 @@ if __name__ == '__main__':
             if 'fc' not in key:
                 ckpt_new[key] = ckpt[key]
         net.load_state_dict(ckpt_new)
-        out_name = sys.argv[1]+'_features'
+        out_name = sys.argv[1]+'_pip2_features'
         in_size = 224
     print('load ok: %s' % ckpt_path)
     

@@ -39,9 +39,11 @@ class Collator(object):
         batch_x = {}
         if not self.flag:
             batch_x['images'] = torch.stack([x['images'] for x in data])
+            batch_x['dlmks'] = torch.stack([x['dlmks'] for x in data])
             batch_x['mask'] = torch.stack([x['mask'] for x in data])
         else:
             batch_x['images'] = [x['images'] for x in data]
+            batch_x['dlmks'] = [x['dlmks'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
@@ -79,8 +81,10 @@ class ABAWDataset(Dataset):
         self.sample_times = args['sample_times']
         self.features = args['features']
         self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
-        self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
+        # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
+        self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
         # self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
+        self.lmk_dir = 'pipnet_landmarks'
 
 
         self.transform = create_transform(self.input_size)
@@ -95,6 +99,7 @@ class ABAWDataset(Dataset):
         nums = []
         labels = []
         for file_id in df_data['File_ID'].values:
+        # for file_id in df_data['File_ID'].values[:100]:
             # file_id = os.path.basename(data_file)
             # loc = df['File_ID'] == '['+file_id+']'
 
@@ -126,20 +131,16 @@ class ABAWDataset(Dataset):
                 ind_orderd *= 50 // len(ind_orderd)
                 ind_orderd += ind_orderd[:50 % len(ind_orderd)]
 
-            
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
                 img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             else:
                 max_len = 800
-                if len(names) > max_len:
-                    img_names = [ names[ind] for ind in ind_orderd[:max_len]] 
-                else:
-                    img_names = names
-            image_paths = sorted([os.path.join(self.data_dir, self.set_dir, 
-                                               'aligned', file_name, file_name+'_aligned',
-                                               name) for name in img_names])
-            
+                img_names = sorted([ names[ind] for ind in ind_orderd[:max_len]])
+            image_paths = [os.path.join(self.data_dir, self.set_dir, 
+                                        'aligned', file_name, file_name+'_aligned',
+                                        name) for name in img_names]
+    
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
@@ -178,16 +179,29 @@ class ABAWDataset(Dataset):
         video_entry = self.video_dict[vid_name]
         sel_paths = image_paths
         inputs = []
-        for path in sel_paths:
+        lmks = []
 
+        df_path = os.path.join(self.data_dir, self.lmk_dir, self.set_dir, vid_name+'.csv')
+        df_lmk = pd.read_csv(df_path, index_col=0)
+
+        lmk_names = df_lmk.index.to_list()
+        lmk_data = df_lmk.values
+        n, k = lmk_data.shape
+        d_lmks = lmk_data.copy()
+        d_lmks[1:] = d_lmks[1:] - lmk_data[:-1]
+        d_lmks[0, :] = 0
+        for path in sel_paths:
+            img_name = os.path.basename(path)[:-4]
             if self.features == 'image':
                 input = self.transform(Image.open(path)).unsqueeze(0)
             else:
-                img_name = os.path.basename(path)[:-4]
                 feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
-        
+
+            ind = lmk_names.index(img_name+'.jpg')
+            lmks.append(torch.from_numpy(d_lmks[ind]).unsqueeze(0))
+
         if self.snippet_size > 0:
             tokens = 1
             mask = torch.ones(self.snippet_size + tokens)
@@ -199,6 +213,7 @@ class ABAWDataset(Dataset):
             data['mask'] = mask.float()
 
         data['images'] = torch.cat(inputs, 0)
+        data['dlmks'] = torch.cat(lmks, 0).float()
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
         data['intensity'] = intensity

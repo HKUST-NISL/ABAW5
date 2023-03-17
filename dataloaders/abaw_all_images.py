@@ -25,7 +25,7 @@ class ABAWDataset(Dataset):
         self.transform = create_transform(self.input_image_size)
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
-        data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
+        data_path = os.path.join(dataset_folder_path, 'pipnet_align', indexList[trainIndex])
         self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')

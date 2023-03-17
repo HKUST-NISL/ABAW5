@@ -84,8 +84,10 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
-        hidden_ch = 512
-        self.rnn = nn.GRU(feat_ch, hidden_ch, 2)
+        feat_ch += 68*2
+        hidden_ch = 256
+        # self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
+        self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
 
         # self.elem_atten = nn.Sequential(
         #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
@@ -94,20 +96,20 @@ class ERI(LightningModule):
         
         self.tokens = 1
         # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
-
-        self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
+        # self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
         self.reg_token = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
-        self.n_head = 8
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=2048, nhead=self.n_head)
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.n_head = 4
+        self.n_layers = 4
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=256, nhead=self.n_head, dropout=0.1)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
 
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
-            nn.Linear(hidden_ch, hidden_ch, bias=False),
-            nn.LayerNorm(hidden_ch),
+            nn.Linear(hidden_ch, 256, bias=False),
+            nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_ch, 7, bias=False),
+            nn.Linear(256, 7, bias=False),
         )
 
         # self.heads = nn.ModuleList([nn.Sequential(
@@ -119,9 +121,6 @@ class ERI(LightningModule):
 
         self.test_vids = []
         self.exp_names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
-
-        # for name, params in self.named_parameters():
-        #     print(name)
 
     def configure_optimizers(self):
 
@@ -162,8 +161,6 @@ class ERI(LightningModule):
         else:
             b, n, c = x.shape
 
-        
-        
         reg_token = torch.tile(self.reg_token, (b, 1, 1))
         x = torch.cat([reg_token, x], dim=1)
         x = x.reshape(b, n, -1) + self.pos_embedding.tile(b, 1, 1)[:, :n+1].to(x.device)
@@ -178,17 +175,20 @@ class ERI(LightningModule):
 
     def forward_model_seq(self, data):
         input = data['images']
+        dlmk = data['dlmks']
         age_con = data['age_con'].to(self.device)
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
+            xlmk = dlmk[i].to(self.device)
             if self.features == 'image':
                 n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
             else:
                 n, c = x.shape
 
+            x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
 
             # x = x.permute(0, 2, 1)
@@ -200,6 +200,8 @@ class ERI(LightningModule):
 
             x, ho = self.rnn(x.permute(1, 0, 2))
             x = x.permute(1, 0, 2)
+
+            x = x - torch.mean(x, dim=1, keepdim=True)
 
             # x = x.permute(0, 2, 1)
             # # x = self.conv_module(x)
@@ -249,19 +251,21 @@ class ERI(LightningModule):
         if not flag:
             return mask
         
-        # # hard samples
-        # quantile = torch.quantile(losses, 0.5, interpolation='nearest')
-        # mask[losses > quantile] = 2.
+        # hard samples
+        quantile = torch.quantile(losses, 0.75, interpolation='nearest')
+        mask[losses > quantile] = 2.
 
-        # noisy samples
-        quantile = torch.quantile(losses, 0.98, interpolation='nearest')
-        mask[losses > quantile] = 0.5
+        # # noisy samples
+        # quantile = torch.quantile(losses, 0.98, interpolation='nearest')
+        # mask[losses > quantile] = 0.5
+
         return mask
     
     def compute_loss(self, preds, labels):
         if self.loss_type == 'l2':
             loss_l2 = F.mse_loss(preds, labels, reduction='none')
             mask = self.hard_sample_mask(loss_l2, False)
+            # mask = self.hard_sample_mask(loss_l2, True)
             loss = torch.mean(loss_l2 * mask)
         elif self.loss_type == 'l1':
             loss_l1 = torch.abs(preds - labels)
@@ -283,9 +287,12 @@ class ERI(LightningModule):
         result = {"train_preds": preds,   
                   "train_labels": labels,
                   "loss": loss}
+        
         return result
     
     def training_epoch_end(self, training_step_outputs):
+        lr = self.lr_schedulers().get_last_lr()[0]
+        print('cur_lr', lr)
 
         preds = torch.cat([data['train_preds'] for data in training_step_outputs], dim=0)
         labels = torch.cat([data['train_labels'] for data in training_step_outputs], dim=0)
