@@ -317,7 +317,7 @@ def checkPipnetAlignedFrames(openface_aligned_dir, pipnet_aligned_dir,
     landmarks = []
     for o in landmark_files:
         df = pd.read_csv(o)
-        x = len(df.columns)
+        x = len(df.index)
         landmarks.append(x)
     len_openface = len(openface)
     sum_openface = np.sum(openface)
@@ -325,12 +325,19 @@ def checkPipnetAlignedFrames(openface_aligned_dir, pipnet_aligned_dir,
     sum_pipnet = np.sum(pipnet)
     len_landmarks = len(landmarks)
     sum_landmarks = np.sum(landmarks)
+
     print('len openface ', len_openface)
     print('sum openface ', sum_openface)
     print('len pipnet ', len_pipnet)
     print('sum pipnet ', sum_pipnet)
     print('len landmarks ', len_landmarks)
     print('sum landmarks ', sum_landmarks)
+    # calculate missing frames, invalid videos
+    # one by one check landmarks
+    print('missing frames ', sum_openface-sum_pipnet)
+    pipnet = np.array(pipnet)
+    x = np.where(pipnet == 0)
+    print('invalid videos ', x[0].shape)
 
 
 if __name__ == '__main__':
