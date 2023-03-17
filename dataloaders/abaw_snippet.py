@@ -45,6 +45,7 @@ class Collator(object):
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
+        batch_x['vid'] = [x['vid'] for x in data]
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
 
@@ -79,6 +80,7 @@ class ABAWDataset(Dataset):
         self.features = args['features']
         self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
+        # self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
 
 
         self.transform = create_transform(self.input_size)
@@ -87,6 +89,9 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (self.set_dir))
 
+        num_path = './dataset/%s_num.csv' % self.set_dir
+        vids = []
+        snums = []
         nums = []
         labels = []
         for file_id in df_data['File_ID'].values:
@@ -110,6 +115,17 @@ class ABAWDataset(Dataset):
             diff_df = pd.read_csv(df_path, index_col=0)
             scores = diff_df['1'].values
             ind_orderd = np.argsort(scores).tolist()[::-1]
+
+            if len(ind_orderd) < 50:
+                # print(file_id, len(ind_orderd))
+                vids.append(file_name)
+                snums.append(len(ind_orderd))
+
+                if len(ind_orderd) == 0: continue
+
+                ind_orderd *= 50 // len(ind_orderd)
+                ind_orderd += ind_orderd[:50 % len(ind_orderd)]
+
             
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
@@ -140,6 +156,9 @@ class ABAWDataset(Dataset):
 
             nums.append(len(image_paths))
             labels.append(data_entry['intensity'].reshape((1, -1)))
+
+        df = pd.DataFrame(snums, columns=['numbers'], index=vids)
+        df.to_csv(num_path)
 
         self.args = args
 

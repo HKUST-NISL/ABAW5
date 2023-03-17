@@ -14,6 +14,16 @@ from torchmetrics import Accuracy
 from torchvision import transforms
 import models
 
+from einops import rearrange, repeat
+
+
+def sinusoidal_embedding(n_channels, dim):
+    pe = torch.FloatTensor([[p / (10000 ** (2 * (i // 2) / dim)) for i in range(dim)]
+                            for p in range(n_channels)])
+    pe[:, 0::2] = torch.sin(pe[:, 0::2])
+    pe[:, 1::2] = torch.cos(pe[:, 1::2])
+    return rearrange(pe, '... -> 1 ...')
+
 
 class ERI(LightningModule):
     def __init__(self, **args):
@@ -65,7 +75,7 @@ class ERI(LightningModule):
             # self.model = torch.nn.Identity()
             feat_ch = 2048
 
-        hidden_ch = 512
+        
         # self.conv_module = nn.Sequential(
         #     nn.Conv1d(feat_ch, hidden_ch, kernel_size=5, stride=1, padding=2, bias=False),
         #     nn.Conv1d(hidden_ch, hidden_ch, kernel_size=5, stride=1, padding=2, bias=False),
@@ -74,32 +84,44 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
+        hidden_ch = 512
+        self.rnn = nn.GRU(feat_ch, hidden_ch, 2)
+
         # self.elem_atten = nn.Sequential(
-        #     nn.Conv1d(hidden_ch, 1, kernel_size=3, stride=1, padding=1),
+        #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
         #     nn.Softmax(dim=-1),
         # )
-        # feat_ch = hidden_ch
-
+        
         self.tokens = 1
-        self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, feat_ch))
-        self.reg_token = nn.Parameter(torch.randn(1, 1, feat_ch))
+        # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
+
+        self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
+        self.reg_token = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
         self.n_head = 8
-        encoder_layer = nn.TransformerEncoderLayer(d_model=feat_ch, dim_feedforward=2048, nhead=self.n_head)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=2048, nhead=self.n_head)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
 
-        # self.head = nn.Linear(feat_ch + 8, 7, bias=True)
-        
+        # self.head = nn.Linear(feat_ch, 7)
+        self.head = nn.Sequential(
+            nn.Linear(hidden_ch, hidden_ch, bias=False),
+            nn.LayerNorm(hidden_ch),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_ch, 7, bias=False),
+        )
 
-        # self.rnn = nn.GRU(feat_ch, feat_ch, 2)
-        self.head = nn.Linear(feat_ch, 7)
-
-        # self.head = nn.Sequential(
-        #     nn.Linear(feat_ch * 2, hidden_ch, bias=False),
+        # self.heads = nn.ModuleList([nn.Sequential(
+        #     nn.Linear(hidden_ch, hidden_ch, bias=False),
         #     nn.LayerNorm(hidden_ch),
         #     nn.Dropout(0.2),
-        #     nn.Linear(hidden_ch, 7, bias=False),
-        # )
+        #     nn.Linear(hidden_ch, 1, bias=False),
+        # ) for i in range(self.tokens)])
+
+        self.test_vids = []
+        self.exp_names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
+
+        # for name, params in self.named_parameters():
+        #     print(name)
 
     def configure_optimizers(self):
 
@@ -140,10 +162,12 @@ class ERI(LightningModule):
         else:
             b, n, c = x.shape
 
-        x = x.reshape(b, n, -1)
         
-        reg_token = torch.tile(self.reg_token, (b, self.tokens, 1))
+        
+        reg_token = torch.tile(self.reg_token, (b, 1, 1))
         x = torch.cat([reg_token, x], dim=1)
+        x = x.reshape(b, n, -1) + self.pos_embedding.tile(b, 1, 1)[:, :n+1].to(x.device)
+
         x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
 
         x = x[:, 0]
@@ -174,18 +198,28 @@ class ERI(LightningModule):
             # x = x.permute(0, 2, 1)
             # # print(x.shape)
 
+            x, ho = self.rnn(x.permute(1, 0, 2))
+            x = x.permute(1, 0, 2)
+
+            # x = x.permute(0, 2, 1)
+            # # x = self.conv_module(x)
+            # attn = self.elem_atten(x).permute(0, 2, 1)
+            # x = x.permute(0, 2, 1)
+
             reg_token = self.reg_token
             x_t = torch.cat([reg_token, x], dim=1)
+            # x_t = x_t.reshape(1, n+1, -1) + self.pos_embedding[:, :n+1].to(x.device)
             x_t = self.transformer(x_t.permute(1, 0, 2)).permute(1, 0, 2)
 
             x_t1 = x_t[:, 0]
-            # x_t2 = torch.sum(x_t[:, 1:] * attn.permute(0, 2, 1), dim=1)
+            # x_t2 = torch.sum(x_t[:, 1:], dim=1)
+            # x = torch.cat([x_t1[:, i] for i in range(self.tokens)], dim=-1)
             x = x_t1
             
-            # x_r, ho = self.rnn(x.permute(1, 0, 2))
-            # x = torch.cat([x_t1, x_r[-1]], dim=-1)
-
+            # # x_r, ho = self.rnn(x.permute(1, 0, 2))
+            # x = torch.cat([x_t1, x_t2], dim=-1)
             feats.append(x)
+
 
         feats = torch.cat(feats, dim = 0)
         preds = torch.sigmoid(self.head(feats))
@@ -285,7 +319,22 @@ class ERI(LightningModule):
         return result
 
     def test_step(self, batch, batch_idx):
-        pass
+        data, labels = batch
+        self.test_vids.extend(data['vid'])
+        preds = self.forward_model(data)
+        result = {"val_preds": preds}
+        return result
+    
+    def test_epoch_end(self, test_step_outputs):
+
+        preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
+
+        values = preds.detach().cpu().numpy()
+
+        df = pd.DataFrame(values, columns=self.exp_names, index=self.test_vids)
+        df.to_csv('dataset/abaw5_results/test.csv')
+
+        return
 
 
 if __name__ == '__main__':

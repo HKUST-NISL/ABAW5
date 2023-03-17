@@ -14,8 +14,8 @@ import pandas as pd
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch Emotion Training')
 # Datasets
-parser.add_argument('--data_dir',  default='./dataset/abaw5', type=str)
-parser.add_argument('--out_dir',  default='./dataset/abaw5_diffs2', type=str)
+parser.add_argument('--data_dir',  default='./dataset/abaw5/pipnet_align', type=str)
+parser.add_argument('--out_dir',  default='./dataset/abaw5/pipnet_diffs', type=str)
 
 
 def run(args):
@@ -27,10 +27,11 @@ def run(args):
     for set_type in types:
         print(set_type)
         diff_dir = os.path.join(args.out_dir, set_type)
+        frame_count = 0
 
         os.makedirs(diff_dir, exist_ok=True)
 
-        vid_dirs = sorted(glob(os.path.join(args.data_dir, set_type, 'aligned', '*')))
+        vid_dirs = sorted(glob(os.path.join(args.data_dir, set_type, '*')))
         for vid_dir in tqdm(vid_dirs):
 
             vid_name = os.path.basename(vid_dir)
@@ -47,6 +48,7 @@ def run(args):
             
             for i in range(len(img_paths)):
                 diff_row = []
+                if np.sum(imgs[i]) == 0: continue
                 names.append(os.path.basename(img_paths[i]))
                 for j in range(w_size):
                     i_pre = i - (j+1)
@@ -58,10 +60,13 @@ def run(args):
                     diff_row.append(diff)
                 
                 diffs.append(diff_row)
+                frame_count += 1
 
             df = pd.DataFrame(data=diffs, index=names, columns=cols)
 
             df.to_csv(diff_path)
+
+        print(set_type, frame_count)
 
 
             
