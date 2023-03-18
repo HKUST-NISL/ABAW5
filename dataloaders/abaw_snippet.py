@@ -88,8 +88,10 @@ def get_lmk(df_path, data):
     # m_h = np.median(hs)
 
     n_w = 1. * ed / W
-
     d_lmks = d_lmks / (n_w + 1e-8)
+
+    # fps norm
+    d_lmks *= (1. * fps / 30 )
 
     # plus & minus
     d_lmks_plus = d_lmks.copy()
