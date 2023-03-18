@@ -192,6 +192,8 @@ class ERI(LightningModule):
         age_con = data['age_con'].to(self.device)
         AU1 = data['au_r']
         AU2 = data['au_c']
+        gaze=data['gaze'] #size:8
+        pose=data['pose'] #size:3
 
         feats = []
         for i in range(len(input)):
