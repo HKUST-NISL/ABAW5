@@ -26,7 +26,6 @@ class AUClassifier(nn.Module):
         self.fc = nn.Linear(in_channels, out_channels)
 
     def forward(self, seq_input):
-        print(seq_input.shape)
         bs, seq_len = seq_input.size(0), seq_input.size(1)
         weight = self.fc.weight
         bias = self.fc.bias
