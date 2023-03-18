@@ -122,6 +122,10 @@ class ERI(LightningModule):
         #     nn.Linear(hidden_ch, 1, bias=False),
         # ) for i in range(self.tokens)])
 
+        self.all_params = []
+        for name, param in self.named_parameters():
+            self.all_params.append(param)
+
         self.test_vids = []
         self.exp_names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
 
@@ -136,7 +140,7 @@ class ERI(LightningModule):
         # ]
 
         if self.optim_type == 'adamw':
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.5)
+            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
         elif self.optim_type == 'adam':
             optimizer = optim.Adam(self.parameters(), lr=self.lr)
         elif self.optim_type == 'sgd':
@@ -282,6 +286,9 @@ class ERI(LightningModule):
         
         return loss
 
+    # def compute_reg_loss(self):
+        
+
 
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
@@ -341,7 +348,7 @@ class ERI(LightningModule):
     def test_epoch_end(self, test_step_outputs):
 
         for name, params in self.named_parameters():
-            print(name, params.shape)
+            print(name, torch.mean(torch.sum(params**2)**0.5).item())
 
         preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
         values = preds.detach().cpu().numpy()

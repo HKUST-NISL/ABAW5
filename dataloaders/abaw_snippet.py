@@ -96,8 +96,8 @@ class ABAWDataset(Dataset):
         snums = []
         nums = []
         labels = []
-        for file_id in df_data['File_ID'].values:
-        # for file_id in df_data['File_ID'].values[:100]:
+        # for file_id in df_data['File_ID'].values:
+        for file_id in df_data['File_ID'].values[:100]:
             # file_id = os.path.basename(data_file)
             # loc = df['File_ID'] == '['+file_id+']'
 
