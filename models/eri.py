@@ -303,7 +303,7 @@ class ERI(LightningModule):
         loss_1 = self.compute_loss(preds, labels)
         loss_2 = self.compute_reg_loss()
 
-        loss = loss_1 + loss_2 * 0.1
+        loss = loss_1 + loss_2 * 0.0001
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -321,6 +321,13 @@ class ERI(LightningModule):
         apcc = self.calculate_apcc(preds, labels)
         
         self.log('train_apcc', apcc, on_epoch=True, prog_bar=True)
+
+        l2_w = []
+        for params in self.all_params:
+            l2_w.append((torch.sum(params**2)**0.5).item())
+        
+        self.log('mean_w_l2', np.mean(l2_w), on_epoch=True, prog_bar=True)
+
         result = {"train_apcc": apcc}
 
 
