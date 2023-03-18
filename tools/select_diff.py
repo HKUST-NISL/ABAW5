@@ -23,7 +23,7 @@ def run(args):
     cols = [str(i+1) for i in range(w_size)]
     # types = ['train', 'val']
     # types = ['val', 'train']
-    types = ['train']
+    types = ['test']
     out_dir = args.out_dir
     for set_type in types:
         print(set_type)

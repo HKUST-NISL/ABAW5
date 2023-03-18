@@ -85,7 +85,8 @@ class ERI(LightningModule):
         # )
 
         # feat_ch += 68*2
-        hidden_ch = 256
+        hidden_ch = 512
+
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
         # self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
@@ -104,7 +105,13 @@ class ERI(LightningModule):
 
         self.n_head = 4
         self.n_layers = 4
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=256, nhead=self.n_head, dropout=0.2)
+        d_feed = 256
+
+        # self.n_head = 8
+        # self.n_layers = 6
+        # d_feed = 2048
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=d_feed, nhead=self.n_head, dropout=0.2)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
 
         # self.head = nn.Linear(feat_ch, 7)
@@ -157,7 +164,7 @@ class ERI(LightningModule):
 
     def forward_model_mask(self, data):
         x = data['images'].to(self.device)
-        age_con = data['age_con'].to(self.device)
+        # age_con = data['age_con'].to(self.device)
 
         mask = data['mask'].to(self.device)
         mask = torch.cat([mask] * self.n_head, dim=0)
@@ -182,7 +189,7 @@ class ERI(LightningModule):
 
     def forward_model_seq(self, data):
         input = data['images']
-        age_con = data['age_con'].to(self.device)
+        # age_con = data['age_con'].to(self.device)
 
         feats = []
         for i in range(len(input)):
@@ -362,18 +369,47 @@ class ERI(LightningModule):
         return result
     
     def test_epoch_end(self, test_step_outputs):
-        
-        l2_w = []
-        for name, params in self.named_parameters():
-            print(name, torch.mean(torch.sum(params**2)**0.5).item())
-            l2_w.append(torch.mean(torch.sum(params**2)**0.5).item())
-        print(np.mean(l2_w))
+        ind_col = 'File_ID'
+        # l2_w = []
+        # for name, params in self.named_parameters():
+        #     print(name, torch.mean(torch.sum(params**2)**0.5).item())
+        #     l2_w.append(torch.mean(torch.sum(params**2)**0.5).item())
+        # print(np.mean(l2_w))
+
+        df_info = pd.read_csv('dataset/abaw5/data_info.csv', index_col=0)
+
+        df_gt = df_info[df_info['Split'] == 'Test']
+        df_gt = df_gt[self.exp_names].sort_index()
 
         preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
         values = preds.detach().cpu().numpy()
 
-        df = pd.DataFrame(values, columns=self.exp_names, index=self.test_vids)
-        df.to_csv('dataset/abaw5_results/test.csv')
+        df_test = pd.DataFrame(values, columns=self.exp_names)
+        df_test[ind_col] = ['[' + x + ']' for x in self.test_vids]
+
+        new_cols = ['File_ID'] + self.exp_names
+        df_test = df_test[new_cols].set_index(ind_col)
+        
+        for vid in df_gt.index:
+            if vid not in df_test.index:
+                print(vid)
+                df_test.loc[vid] = df_test.mean()
+        
+        df_test = df_test.sort_index()
+        preds = df_test.values
+        labels = df_gt.values
+
+        # def cal_pcc(preds, labels):
+        #     preds_mean = np.mean(preds, axis=0, keepdims=True)
+        #     labels_mean = np.mean(labels, axis=0, keepdims=True)
+
+        #     pcc = np.sum((preds-preds_mean) * (labels-labels_mean), axis=0) / \
+        #         np.clip((np.sum((preds-preds_mean)**2, axis=0) * np.sum((labels-labels_mean)**2, axis=0))**0.5, a_min=1e-8, a_max=None)
+
+        #     return np.mean(pcc)
+        # print(cal_pcc(preds, labels))
+
+        df_test.reset_index().to_csv('dataset/abaw5_results/predictions.csv', index=False)
 
         return
 

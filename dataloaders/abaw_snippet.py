@@ -44,7 +44,7 @@ class Collator(object):
             batch_x['images'] = [x['images'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
-        batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
+        # batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
         batch_x['vid'] = [x['vid'] for x in data]
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
@@ -205,14 +205,14 @@ class ABAWDataset(Dataset):
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 
-        age = int(video_entry['age']) - 15
-        if age > 34: age = 49
-        if age < 0: age = 0
-        age_bin = age // 5
-        age_con = torch.zeros((8))
-        age_con[age_bin] = 1
-        age_con[7] = int(video_entry['country'])
-        data['age_con'] = age_con
+        # age = int(video_entry['age']) - 15
+        # if age > 34: age = 49
+        # if age < 0: age = 0
+        # age_bin = age // 5
+        # age_con = torch.zeros((8))
+        # age_con[age_bin] = 1
+        # age_con[7] = int(video_entry['country'])
+        # data['age_con'] = 0
         
         return data
 
@@ -227,22 +227,25 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
         num_workers = args['num_workers']
-        train_set = ABAWDataset(0, **args)
-        val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(1, **args)
+        is_train = (args['train'] == 'True')
+        if is_train:
+            train_set = ABAWDataset(0, **args)
+            val_set = ABAWDataset(1, **args)
+        test_set = ABAWDataset(2, **args)
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
 
-        self.train_loader = DataLoader(dataset=train_set,
-                                       batch_size=args['batch_size'],
-                                       shuffle=True,
-                                       num_workers=num_workers,
-                                       collate_fn=collate_fn)
-        self.val_loader = DataLoader(dataset=val_set,
-                                     batch_size=args['batch_size'],
-                                     shuffle=False,
-                                     num_workers=num_workers,
-                                     collate_fn=collate_fn)
+        if is_train:
+            self.train_loader = DataLoader(dataset=train_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=True,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
+            self.val_loader = DataLoader(dataset=val_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=False,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
                                       batch_size=args['batch_size'],
                                       shuffle=False,
