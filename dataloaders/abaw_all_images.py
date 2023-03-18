@@ -102,7 +102,7 @@ class ABAWDataModule_all_images(pl.LightningDataModule):
         super().__init__()
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(1, **args)
+        test_set = ABAWDataset(2, **args)
         collate_fn = Collator()
 
         self.train_loader = DataLoader(dataset=train_set,

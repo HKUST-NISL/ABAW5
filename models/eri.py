@@ -197,6 +197,7 @@ class ERI(LightningModule):
             x = x.reshape(1, n, -1)
             # xlmk = xlmk.reshape(1, n, -1)
 
+
             # x = x.permute(0, 2, 1)
             # x = self.conv_module(x)
             # attn = self.elem_atten(x)
