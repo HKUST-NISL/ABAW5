@@ -190,10 +190,12 @@ class ABAWDataset(Dataset):
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 
-        au_info = pd.read_csv(video_entry['au_csv']).values
-        au_info = au_info[:, 679:]
+        info = pd.read_csv(video_entry['au_csv']).values
+        au_info = info[:, 679:]
         au_info_r = au_info[:, :17]
         au_info_c = au_info[:, 17:]
+        gaze = info[:, 5:13]
+        pose = info[:, 296:299]
         data['au_r'] = au_info_r
         data['au_c'] = au_info_c
 

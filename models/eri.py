@@ -98,9 +98,9 @@ class ERI(LightningModule):
         #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
         #     nn.Softmax(dim=-1),
         # )
-        self.all_params = []
+        '''self.all_params = []
         for name, param in self.named_parameters():
-            self.all_params.append(param)
+            self.all_params.append(param)'''
         
         self.tokens = 1
         # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
@@ -307,8 +307,8 @@ class ERI(LightningModule):
         preds = self.forward_model(data)
         loss = self.compute_loss(preds, labels)
 
-        loss_2 = self.compute_reg_loss()
-        loss += (loss_2 * 0.00001)
+        '''loss_2 = self.compute_reg_loss()
+        loss += (loss_2 * 0.00001)'''
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
