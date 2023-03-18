@@ -25,7 +25,7 @@ class ABAWDataset(Dataset):
         self.transform = create_transform(self.input_image_size)
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
-        data_path = os.path.join(dataset_folder_path, 'openface_align', indexList[trainIndex])
+        data_path = os.path.join(dataset_folder_path, 'openface_align', indexList[trainIndex], 'aligned')
         self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
@@ -100,21 +100,21 @@ class ABAWDataset(Dataset):
 class ABAWDataModule_all_images(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
-        train_set = ABAWDataset(0, **args)
-        val_set = ABAWDataset(1, **args)
+        # train_set = ABAWDataset(0, **args)
+        # val_set = ABAWDataset(1, **args)
         test_set = ABAWDataset(2, **args)
         collate_fn = Collator()
 
-        self.train_loader = DataLoader(dataset=train_set,
-                                       batch_size=args['batch_size'],
-                                       num_workers=10,
-                                       collate_fn=collate_fn)
-        self.val_loader = DataLoader(dataset=val_set,
-                                     batch_size=args['batch_size'],
-                                     num_workers=10,
-                                     collate_fn=collate_fn)
+        # self.train_loader = DataLoader(dataset=train_set,
+        #                                batch_size=args['batch_size'],
+        #                                num_workers=10,
+        #                                collate_fn=collate_fn)
+        # self.val_loader = DataLoader(dataset=val_set,
+        #                              batch_size=args['batch_size'],
+        #                              num_workers=10,
+        #                              collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
-                                      batch_size=1,
+                                      batch_size=args['batch_size'],
                                       num_workers=10,
                                       collate_fn=collate_fn)
 
