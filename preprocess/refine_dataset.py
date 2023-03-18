@@ -310,10 +310,12 @@ def checkPipnetAlignedFrames(openface_aligned_dir, pipnet_aligned_dir,
         x = len(natsort.natsorted(glob.glob(o+'/'+folder+'_aligned/*')))
         openface.append(x)
     pipnet = []
+    names = []
     for o in pipnet_files:
         folder = o.split('/')[-1]
         x = len(natsort.natsorted(glob.glob(o + '/' + folder + '_aligned/*')))
         pipnet.append(x)
+        names.append(folder)
     landmarks = []
     for o in landmark_files:
         df = pd.read_csv(o)
@@ -332,17 +334,35 @@ def checkPipnetAlignedFrames(openface_aligned_dir, pipnet_aligned_dir,
     print('sum pipnet ', sum_pipnet)
     print('len landmarks ', len_landmarks)
     print('sum landmarks ', sum_landmarks)
+
     # calculate missing frames, invalid videos
     # one by one check landmarks
     print('missing frames ', sum_openface-sum_pipnet)
     pipnet = np.array(pipnet)
-    x = np.where(pipnet == 0)
-    print('invalid videos ', x[0].shape)
+    x = np.where(pipnet == 0)[0]
+    print('invalid videos ', x.shape)
+    #print('invalid videos ', names[x])
+    '''print('Top 5 poor videos:')
+    a = np.argsort(pipnet)
+    print(names[a[0]], pipnet[a[0]])
+    print(names[a[1]], pipnet[a[1]])
+    print(names[a[2]], pipnet[a[2]])
+    print(names[a[3]], pipnet[a[3]])
+    print(names[a[4]], pipnet[a[4]])'''
 
+def drawPipnetDistribution():
+    a = np.load('dataset/pipnet_align/check/pipnet_train.npy')
+    b = np.load('dataset/pipnet_align/check/pipnet_val.npy')
+    plt.hist(a, bins=50)
+    plt.xlabel('# frames in a video after PIPNet alignment')
+    plt.ylabel('Count')
+    plt.title('Train')
+    plt.show()
 
 if __name__ == '__main__':
-    checkPipnetAlignedFrames('dataset/train/aligned/', 'dataset/pipnet_align/train/',
-                             'dataset/pipnet_align/landmarks/train/')
+    drawPipnetDistribution()
+    #checkPipnetAlignedFrames('dataset/train/aligned/', 'dataset/pipnet_align/train/',
+    #                         'dataset/pipnet_align/landmarks/train/')
     #compareTwoAlignedFaces()
     #effectNetExample()
     #reDetectFacesDrawExample('dataset/val/blackImages_before.csv', 'dataset/val/re_aligned2/', '/Users/adia/Desktop/abaw/datasets/val/mp4/')

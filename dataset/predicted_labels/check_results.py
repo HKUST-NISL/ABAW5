@@ -3,12 +3,22 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import cv2
 
-labels_train = np.load('labels_train.npy')
+df = pd.read_csv('val_107.csv', sep=',', header=None)
+x=df.values
+vid_val = x[1:, 0].astype(int)
+preds_val = x[1:, 1:].astype(float)
+csv_file = '../data_info.csv'
+df = pd.read_csv(csv_file)
+y=df.values
+labels_all = y[:, 2:9]
+labels_val = labels_all[vid_val]
+
+'''labels_train = np.load('labels_train.npy')
 labels_val = np.load('labels_val.npy')
 preds_train = np.load('preds_train.npy')
 preds_val = np.load('preds_val.npy')
 vid_train = np.load('vids_train.npy')
-vid_val = np.load('vids_val.npy')
+vid_val = np.load('vids_val.npy')'''
 
 def pcc(preds, labels):
     preds = np.mean(preds.reshape(-1, 1, 7), axis=1)
@@ -53,9 +63,9 @@ def check_worst_videos():
         values.append(va)
 
     df_save = pd.DataFrame(values, names, columns)
-    df_save.to_csv('val_results.csv')
+    df_save.to_csv('val_results_107.csv')
 
-    values = []
+    '''values = []
     names = []
     pcc_loss_train = pcc(preds_train, labels_train).mean(axis=1) #.sum()
     pcc_loss_train_index = np.argsort(pcc_loss_train)[:topn]
@@ -79,7 +89,7 @@ def check_worst_videos():
         values.append(va)
 
     df_save = pd.DataFrame(values, names, columns)
-    df_save.to_csv('train_results.csv')
+    df_save.to_csv('train_results.csv')'''
 
     '''plt.plot(pcc_loss_val)
     plt.title('PCC Loss - val')
@@ -154,7 +164,7 @@ def showImages(csvFile='train_results.csv', datasetFile='dataset/train/aligned/'
     plt.show()
     plt.savefig('./worst_performance_train')
 
-if __name__ == '__main__':
-    visualizePCC7()
-    #check_worst_videos()
-    #showImages()
+
+#visualizePCC7()
+check_worst_videos()
+#showImages()
