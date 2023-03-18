@@ -290,9 +290,9 @@ class ERI(LightningModule):
 
         loss_w = 0.
         for param in self.all_params:
-            loss_w += torch.mean(torch.sum(param**2)**0.5)
+            loss_w += torch.sum(param**2)
         
-        return loss_w / len(self.all_params)
+        return loss_w
         
 
     def training_step(self, batch, batch_idx):
