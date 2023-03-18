@@ -54,8 +54,13 @@ class Collator(object):
         return batch_x, batch_y
 
 
-def get_lmk(df_path):
+def get_lmk(df_path, data):
     
+    fps = data['fps']
+    H = data['h']
+    W = data['w']
+    ed = data['ed']
+
     df_lmk = pd.read_csv(df_path, index_col=0)
 
     lmk_names = df_lmk.index.to_list()
@@ -70,19 +75,21 @@ def get_lmk(df_path):
 
     # print(d_lmks[11, :6])
 
-    lmk_data = lmk_data.reshape(-1, 68, 2)
-    left = np.min(lmk_data[..., 1], axis=1)
-    right = np.max(lmk_data[..., 1], axis=1)
-    top = np.min(lmk_data[..., 0], axis=1)
-    bottom = np.max(lmk_data[..., 0], axis=1)
+    # lmk_data = lmk_data.reshape(-1, 68, 2)
+    # left = np.min(lmk_data[..., 1], axis=1)
+    # right = np.max(lmk_data[..., 1], axis=1)
+    # top = np.min(lmk_data[..., 0], axis=1)
+    # bottom = np.max(lmk_data[..., 0], axis=1)
 
-    ws = right - left
-    hs = bottom - top
+    # ws = right - left
+    # hs = bottom - top
     
-    m_w = np.median(ws)
-    m_h = np.median(hs)
+    # m_w = np.median(ws)
+    # m_h = np.median(hs)
 
-    d_lmks = d_lmks / (m_w + 1e-8)
+    n_w = 1. * ed / W
+
+    d_lmks = d_lmks / (n_w + 1e-8)
 
     # plus & minus
     d_lmks_plus = d_lmks.copy()
@@ -90,6 +97,8 @@ def get_lmk(df_path):
     d_lmks_minus = -d_lmks.copy()
     d_lmks_minus[d_lmks_minus < 0] = 0
     d_lmks = np.concatenate([d_lmks_plus, d_lmks_minus], axis=-1)
+
+    # print(d_lmks[11, :6])
 
     return d_lmks, lmk_names
 
@@ -114,7 +123,9 @@ class ABAWDataset(Dataset):
         df = pd.read_csv(data_info_path)
 
         df_data = df[df['Split']==self.set_type]
-        # print(df_data)
+        
+        df_fps_path = os.path.join('dataset/abaw5/pipnet_align', self.set_dir+'_video_info.csv')
+        df_fps = pd.read_csv(df_fps_path, index_col=0)
 
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
@@ -184,6 +195,13 @@ class ABAWDataset(Dataset):
             image_paths = [os.path.join(self.data_dir, self.set_dir, 
                                         'aligned', file_name, file_name+'_aligned',
                                         name) for name in img_names]
+            
+            fps_info = df_fps.loc[int(file_name)]
+
+            data_entry['fps'] = fps_info['FPS']
+            data_entry['h'] = fps_info['height']
+            data_entry['w'] = fps_info['width']
+            data_entry['ed'] = fps_info['eye distance']
 
             # data_entry['lmk_names'] = lmk_names
             # data_entry['dlmks'] = d_lmks
@@ -231,7 +249,7 @@ class ABAWDataset(Dataset):
         lmks = []
 
         df_path = os.path.join(self.data_dir, self.lmk_dir, self.set_dir, vid_name+'.csv')
-        d_lmks, lmk_names = get_lmk(df_path)
+        d_lmks, lmk_names = get_lmk(df_path, video_entry)
 
         for path in sel_paths:
             img_name = os.path.basename(path)[:-4]
