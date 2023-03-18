@@ -200,7 +200,6 @@ class ABAWDataset(Dataset):
         data['au_c'] = torch.from_numpy(data['au_c']).float()
         data['au_r'] = torch.from_numpy(data['au_r']).float()
 
-
         age = int(video_entry['age']) - 15
         if age > 34: age = 49
         if age < 0: age = 0

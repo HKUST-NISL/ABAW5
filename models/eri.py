@@ -86,7 +86,7 @@ class ERI(LightningModule):
 
         # feat_ch += 68*2
         feat_ch = 512
-        feat_ch += 17
+        feat_ch += (17+18)
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -98,6 +98,9 @@ class ERI(LightningModule):
         #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
         #     nn.Softmax(dim=-1),
         # )
+        self.all_params = []
+        for name, param in self.named_parameters():
+            self.all_params.append(param)
         
         self.tokens = 1
         # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
@@ -187,13 +190,15 @@ class ERI(LightningModule):
     def forward_model_seq(self, data):
         input = data['images']
         age_con = data['age_con'].to(self.device)
-        AU = data['au_r']
+        AU1 = data['au_r']
+        AU2 = data['au_c']
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
-            au = AU[i].to(self.device)
-            x = torch.cat((x, au), dim=1)
+            au1 = AU1[i].to(self.device)
+            au2 = AU2[i].to(self.device)
+            x = torch.cat((x, au1, au2), dim=1)
             if self.features == 'image':
                 n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
