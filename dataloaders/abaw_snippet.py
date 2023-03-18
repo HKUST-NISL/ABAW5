@@ -200,14 +200,12 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         super().__init__()
         num_workers = args['num_workers']
         is_train = (args['train'] == 'True')
-        if is_train:
-            train_set = ABAWDataset(0, **args)
-            val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(1, **args)
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
 
         if is_train:
+            train_set = ABAWDataset(0, **args)
+            val_set = ABAWDataset(1, **args)
             self.train_loader = DataLoader(dataset=train_set,
                                         batch_size=args['batch_size'],
                                         shuffle=True,
@@ -218,11 +216,13 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
                                         shuffle=False,
                                         num_workers=num_workers,
                                         collate_fn=collate_fn)
-        self.test_loader = DataLoader(dataset=test_set,
-                                      batch_size=args['batch_size'],
-                                      shuffle=False,
-                                      num_workers=num_workers,
-                                      collate_fn=collate_fn)
+        else:
+            test_set = ABAWDataset(1, **args)
+            self.test_loader = DataLoader(dataset=test_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=False,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
 
     def train_dataloader(self):
         return self.train_loader
