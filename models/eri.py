@@ -84,10 +84,13 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
-        feat_ch += 68*2
+        # feat_ch += 68*2
         hidden_ch = 256
-        # self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
-        self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
+        self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
+        # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
+        # self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
+
+        # hidden_ch += hidden_ch//2
 
         # self.elem_atten = nn.Sequential(
         #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
@@ -101,13 +104,13 @@ class ERI(LightningModule):
 
         self.n_head = 4
         self.n_layers = 4
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=256, nhead=self.n_head, dropout=0.1)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=256, nhead=self.n_head, dropout=0.2)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
 
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
             nn.Linear(hidden_ch, 256, bias=False),
-            nn.ReLU(),
+            # nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(256, 7, bias=False),
         )
@@ -133,7 +136,7 @@ class ERI(LightningModule):
         # ]
 
         if self.optim_type == 'adamw':
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
+            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.5)
         elif self.optim_type == 'adam':
             optimizer = optim.Adam(self.parameters(), lr=self.lr)
         elif self.optim_type == 'sgd':
@@ -188,8 +191,9 @@ class ERI(LightningModule):
             else:
                 n, c = x.shape
 
-            x = torch.cat([x, xlmk], dim=-1)
+            # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
+            # xlmk = xlmk.reshape(1, n, -1)
 
             # x = x.permute(0, 2, 1)
             # x = self.conv_module(x)
@@ -201,7 +205,11 @@ class ERI(LightningModule):
             x, ho = self.rnn(x.permute(1, 0, 2))
             x = x.permute(1, 0, 2)
 
-            x = x - torch.mean(x, dim=1, keepdim=True)
+            # xlmk, ho = self.rnn_lmk(xlmk.permute(1, 0, 2))
+            # xlmk = xlmk.permute(1, 0, 2)
+            # x = torch.cat([x, xlmk], dim=-1)
+
+            # x = x - torch.mean(x, dim=1, keepdim=True)
 
             # x = x.permute(0, 2, 1)
             # # x = self.conv_module(x)
