@@ -82,9 +82,8 @@ class ABAWDataset(Dataset):
         self.features = args['features']
         self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
-        self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
-        # self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
-        self.lmk_dir = 'pipnet_landmarks'
+        # self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
+        self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
 
 
         self.transform = create_transform(self.input_size)
@@ -98,8 +97,8 @@ class ABAWDataset(Dataset):
         snums = []
         nums = []
         labels = []
-        for file_id in df_data['File_ID'].values:
-        # for file_id in df_data['File_ID'].values[:100]:
+        # for file_id in df_data['File_ID'].values:
+        for file_id in df_data['File_ID'].values[:100]:
             # file_id = os.path.basename(data_file)
             # loc = df['File_ID'] == '['+file_id+']'
 
@@ -131,12 +130,22 @@ class ABAWDataset(Dataset):
                 ind_orderd *= 50 // len(ind_orderd)
                 ind_orderd += ind_orderd[:50 % len(ind_orderd)]
 
+            au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                        'aligned', file_name, file_name+'.csv')
+            au_info = pd.read_csv(au_info_path).values
+            au_info = au_info[:, 679:]
+            
+
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
                 img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
             else:
                 max_len = 800
                 img_names = sorted([ names[ind] for ind in ind_orderd[:max_len]])
+            
+            inds = [int(name[-10:-4])-1 for name in img_names]
+            au_info_r = au_info[inds, :17]
+            au_info_c = au_info[inds, 17:]
             image_paths = [os.path.join(self.data_dir, 'openface_align', self.set_dir, 
                                         file_name, file_name+'_aligned',
                                         name) for name in img_names]
@@ -146,12 +155,6 @@ class ABAWDataset(Dataset):
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
 
-            au_info_path = os.path.join(self.data_dir, 'openface_align', 
-                                        self.set_dir, file_name, file_name+'.csv')
-            au_info = pd.read_csv(au_info_path).values
-            au_info = au_info[:, 679:]
-            au_info_r = au_info[:, :17]
-            au_info_c = au_info[:, 17:]
             data_entry['au_r'] = au_info_r
             data_entry['au_c'] = au_info_c
 
@@ -190,7 +193,18 @@ class ABAWDataset(Dataset):
         sel_paths = image_paths
 
         inputs = []
+        auc_list = []
+        aur_list = []
 
+        # au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+        #                                 'aligned', file_name, file_name+'.csv')
+        # au_info = pd.read_csv(au_info_path).values
+        # au_info = au_info[:, 679:]
+        # au_info_r = au_info[:, :17]
+        # au_info_c = au_info[:, 17:]
+        # data_entry['au_r'] = au_info_r
+        # data_entry['au_c'] = au_info_c
+        
         for path in sel_paths:
             img_name = os.path.basename(path)[:-4]
             if self.features == 'image':
@@ -246,7 +260,7 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         if is_train:
             train_set = ABAWDataset(0, **args)
             val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(2, **args)
+        test_set = ABAWDataset(1, **args)
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
 

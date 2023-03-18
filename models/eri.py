@@ -85,7 +85,7 @@ class ERI(LightningModule):
         # )
 
         feat_ch += 17
-        hidden_ch = 512
+        hidden_ch = 256
 
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -105,7 +105,7 @@ class ERI(LightningModule):
 
         self.n_head = 4
         self.n_layers = 4
-        d_feed = 512
+        d_feed = 256
 
         # self.n_head = 8
         # self.n_layers = 6
@@ -195,7 +195,8 @@ class ERI(LightningModule):
         for i in range(len(input)):
             x = input[i].to(self.device)
             au = AU[i].to(self.device)
-            x = torch.cat((x, au), dim=1)
+            # print(x.shape, au.shape)
+            x = torch.cat([x, au], dim=1)
 
             n, c = x.shape
 
