@@ -186,6 +186,11 @@ class ABAWDataset(Dataset):
             else:
                 feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
+
+                feat_path = os.path.join(self.feat_dir , 'smm_pip_features', self.set_dir, vid_name, img_name+'.npy')
+                input1 = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
+                input = torch.cat([input, input1], dim=-1)
+
             inputs.append(input)
 
         if self.snippet_size > 0:

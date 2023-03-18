@@ -114,7 +114,7 @@ class ABAWDataModule_all_images(pl.LightningDataModule):
                                      num_workers=10,
                                      collate_fn=collate_fn)
         self.test_loader = DataLoader(dataset=test_set,
-                                      batch_size=1,
+                                      batch_size=args['batch_size'],
                                       num_workers=10,
                                       collate_fn=collate_fn)
 

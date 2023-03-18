@@ -84,7 +84,7 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
-        # feat_ch += 68*2
+        feat_ch = 976
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -182,7 +182,6 @@ class ERI(LightningModule):
 
     def forward_model_seq(self, data):
         input = data['images']
-        age_con = data['age_con'].to(self.device)
 
         feats = []
         for i in range(len(input)):
