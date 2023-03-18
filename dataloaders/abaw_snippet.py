@@ -13,6 +13,7 @@ from dataloaders.sampling_strategy import SamplingStrategy
 import torch
 import os
 from torchvision import transforms
+import pickle
 
 def create_transform(in_size=224):
     transform = transforms.Compose([
@@ -91,61 +92,80 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (self.set_dir))
 
-        num_path = './dataset/%s_num.csv' % self.set_dir
-        vids = []
-        snums = []
-        nums = []
-        labels = []
-        for file_id in df_data['File_ID'].values:
-        # for file_id in df_data['File_ID'].values[:100]:
-            # file_id = os.path.basename(data_file)
-            # loc = df['File_ID'] == '['+file_id+']'
+        pickle_path = os.path.join(self.data_dir, self.set_type + '_data.pkl')
+        if os.path.exists(pickle_path):
 
-            file_name = file_id.replace('[', '').replace(']', '')
-            loc = df['File_ID'] == file_id
-            info = df[loc]
-            if info.empty: continue
-            # assert info.iat[0, 1].lower() == indexList[trainIndex]
-            data_entry = {}
-            intensity = info.iloc[0, 2:9].tolist()
-            age = info.iloc[0, 9]
-            country = info.iloc[0, 10]
-            assert country == 'United States' or 'South Africa'
+            with open(pickle_path, 'rb') as handle:
+                data = pickle.load(handle)
 
-            # data_entry['videoPath'] = data_file
-            data_entry['intensity'] = np.array(intensity)
+            self.all_image_lists = data['all_image_lists']
+            self.vid_list = data['vid_list']
+            self.video_dict = data['video_dict']
 
-            feature_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, file_name)
-            image_paths = sorted(glob.glob(os.path.join(feature_path, '*.npy')))
+        else:
+            num_path = './dataset/%s_num.csv' % self.set_dir
+            vids = []
+            snums = []
+            nums = []
+            labels = []
+            for file_id in df_data['File_ID'].values:
+            # for file_id in df_data['File_ID'].values[:100]:
+                # file_id = os.path.basename(data_file)
+                # loc = df['File_ID'] == '['+file_id+']'
 
-            data_entry['image_paths'] = image_paths
-            data_entry['age'] = np.array(age)
-            data_entry['country'] = np.array(0 if country == 'United States' else 1)
+                file_name = file_id.replace('[', '').replace(']', '')
+                loc = df['File_ID'] == file_id
+                info = df[loc]
+                if info.empty: continue
+                # assert info.iat[0, 1].lower() == indexList[trainIndex]
+                data_entry = {}
+                intensity = info.iloc[0, 2:9].tolist()
+                age = info.iloc[0, 9]
+                country = info.iloc[0, 10]
+                assert country == 'United States' or 'South Africa'
 
-            au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-                                        'aligned', file_name, file_name+'.csv')
-            au_info = pd.read_csv(au_info_path).values
-            au_info = au_info[:, 679:]
-            au_info_r = au_info[:, :17]
-            au_info_c = au_info[:, 17:]
-            data_entry['au_r'] = au_info_r
-            data_entry['au_c'] = au_info_c
+                # data_entry['videoPath'] = data_file
+                data_entry['intensity'] = np.array(intensity)
 
-            self.video_dict[file_name] = data_entry
-            self.vid_list.append(file_name)
+                feature_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, file_name)
+                image_paths = sorted(glob.glob(os.path.join(feature_path, '*.npy')))
 
-            for img_path in image_paths:
-                this_image = {
-                    'path': img_path,
-                    'vid': file_name,
-                }
-                self.all_image_lists.append(this_image)
+                data_entry['image_paths'] = image_paths
+                data_entry['age'] = np.array(age)
+                data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
-            nums.append(len(image_paths))
-            labels.append(data_entry['intensity'].reshape((1, -1)))
+                au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                            'aligned', file_name, file_name+'.csv')
+                au_info = pd.read_csv(au_info_path).values
+                au_info = au_info[:, 679:]
+                au_info_r = au_info[:, :17]
+                au_info_c = au_info[:, 17:]
+                data_entry['au_r'] = au_info_r
+                data_entry['au_c'] = au_info_c
 
-        df = pd.DataFrame(snums, columns=['numbers'], index=vids)
-        df.to_csv(num_path)
+                self.video_dict[file_name] = data_entry
+                self.vid_list.append(file_name)
+
+                for img_path in image_paths:
+                    this_image = {
+                        'path': img_path,
+                        'vid': file_name,
+                    }
+                    self.all_image_lists.append(this_image)
+
+                nums.append(len(image_paths))
+                labels.append(data_entry['intensity'].reshape((1, -1)))
+
+                data = {}
+                data['all_image_lists'] = self.all_image_lists
+                data['vid_list'] = self.vid_list
+                data['video_dict'] = self.video_dict
+
+                with open(pickle_path, 'wb') as handle:
+                    pickle.dump(data, handle)
+
+            df = pd.DataFrame(snums, columns=['numbers'], index=vids)
+            df.to_csv(num_path)
 
         self.args = args
 
