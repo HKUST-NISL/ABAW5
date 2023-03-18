@@ -54,6 +54,46 @@ class Collator(object):
         return batch_x, batch_y
 
 
+def get_lmk(df_path):
+    
+    df_lmk = pd.read_csv(df_path, index_col=0)
+
+    lmk_names = df_lmk.index.to_list()
+    lmk_data = df_lmk.values.copy()
+    d_lmks = lmk_data.copy()
+
+    # print('--------  ')
+    # print(d_lmks[10:12, :6])
+
+    d_lmks[1:] = d_lmks[1:] - lmk_data[:-1]
+    d_lmks[0, :] = 0
+
+    # print(d_lmks[11, :6])
+
+    lmk_data = lmk_data.reshape(-1, 68, 2)
+    left = np.min(lmk_data[..., 1], axis=1)
+    right = np.max(lmk_data[..., 1], axis=1)
+    top = np.min(lmk_data[..., 0], axis=1)
+    bottom = np.max(lmk_data[..., 0], axis=1)
+
+    ws = right - left
+    hs = bottom - top
+    
+    m_w = np.median(ws)
+    m_h = np.median(hs)
+
+    d_lmks = d_lmks / (m_w + 1e-8)
+
+    # plus & minus
+    d_lmks_plus = d_lmks.copy()
+    d_lmks_plus[d_lmks_plus < 0] = 0
+    d_lmks_minus = -d_lmks.copy()
+    d_lmks_minus[d_lmks_minus < 0] = 0
+    d_lmks = np.concatenate([d_lmks_plus, d_lmks_minus], axis=-1)
+
+    return d_lmks, lmk_names
+
+
 class ABAWDataset(Dataset):
     def __init__(self, trainIndex, **args):
         '''
@@ -85,7 +125,6 @@ class ABAWDataset(Dataset):
         self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
         # self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
         self.lmk_dir = 'pipnet_landmarks'
-
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
@@ -131,14 +170,10 @@ class ABAWDataset(Dataset):
                 ind_orderd *= 50 // len(ind_orderd)
                 ind_orderd += ind_orderd[:50 % len(ind_orderd)]
 
-            df_path = os.path.join(self.data_dir, self.lmk_dir, self.set_dir, file_name+'.csv')
-            df_lmk = pd.read_csv(df_path, index_col=0)
+            # df_path = os.path.join(self.data_dir, self.lmk_dir, self.set_dir, file_name+'.csv')
+            # d_lmks, lmk_names = get_lmk(df_path)
 
-            lmk_names = df_lmk.index.to_list()
-            lmk_data = df_lmk.values.copy()
-            d_lmks = lmk_data.copy()
-            d_lmks[1:] = d_lmks[1:] - lmk_data[:-1]
-            d_lmks[0, :] = 0
+            # print(d_lmks[11, :6], d_lmks[11, 136:136+6])
 
             names = diff_df.index.to_list()
             if self.snippet_size > 0:
@@ -150,8 +185,8 @@ class ABAWDataset(Dataset):
                                         'aligned', file_name, file_name+'_aligned',
                                         name) for name in img_names]
 
-            data_entry['lmk_names'] = lmk_names
-            data_entry['dlmks'] = d_lmks
+            # data_entry['lmk_names'] = lmk_names
+            # data_entry['dlmks'] = d_lmks
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
@@ -190,10 +225,13 @@ class ABAWDataset(Dataset):
         video_entry = self.video_dict[vid_name]
         sel_paths = image_paths
 
-        d_lmks = video_entry['dlmks']
-        lmk_names = video_entry['lmk_names']
+        # d_lmks = video_entry['dlmks']
+        # lmk_names = video_entry['lmk_names']
         inputs = []
         lmks = []
+
+        df_path = os.path.join(self.data_dir, self.lmk_dir, self.set_dir, vid_name+'.csv')
+        d_lmks, lmk_names = get_lmk(df_path)
 
         for path in sel_paths:
             img_name = os.path.basename(path)[:-4]
@@ -208,7 +246,7 @@ class ABAWDataset(Dataset):
                 lmks.append(torch.from_numpy(d_lmks[ind]).unsqueeze(0))
             else:
                 print(vid_name, img_name)
-                lmks.append(torch.from_numpy(np.zeros(68*2)).unsqueeze(0))
+                lmks.append(torch.from_numpy(np.zeros(68*4)).unsqueeze(0))
 
         if self.snippet_size > 0:
             tokens = 1
@@ -236,6 +274,8 @@ class ABAWDataset(Dataset):
         age_con[age_bin] = 1
         age_con[7] = int(video_entry['country'])
         data['age_con'] = age_con
+
+        del d_lmks
         
         return data
 
