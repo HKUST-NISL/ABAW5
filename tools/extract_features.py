@@ -72,7 +72,7 @@ if __name__ == '__main__':
             if 'fc' not in key:
                 ckpt_new[key] = ckpt[key]
         net.load_state_dict(ckpt_new)
-        out_name = sys.argv[1]+'_pip_features'
+        out_name = sys.argv[1]+'_features'
         in_size = 224
     print('load ok: %s' % ckpt_path)
     
@@ -82,43 +82,43 @@ if __name__ == '__main__':
                              input_size=in_size,
                              load_feature=False
                              )
-    saving_dir = os.path.join(dataset_path, out_name, 'train')
-    print(saving_dir)
-    if not os.path.exists(saving_dir):
-        os.makedirs(saving_dir)
-    for batch in tqdm(dataset.train_loader):
-        image = batch[0]['image'].to(device)
-        vid = batch[0]['vid']
-        imagePath = batch[0]['imagePath']
-        with torch.no_grad():
-            features = net(image).flatten(1)
-        for i in range(features.size()[0]):
-            feature = features[i].cpu().detach().numpy()
-            folder_dir = os.path.join(saving_dir, vid[i])
-            if not os.path.exists(folder_dir):
-                os.mkdir(folder_dir)
-            feat_path = os.path.join(folder_dir, imagePath[i])
-            np.save(feat_path, feature)
+    # saving_dir = os.path.join(dataset_path, out_name, 'train')
+    # print(saving_dir)
+    # if not os.path.exists(saving_dir):
+    #     os.makedirs(saving_dir)
+    # for batch in tqdm(dataset.train_loader):
+    #     image = batch[0]['image'].to(device)
+    #     vid = batch[0]['vid']
+    #     imagePath = batch[0]['imagePath']
+    #     with torch.no_grad():
+    #         features = net(image).flatten(1)
+    #     for i in range(features.size()[0]):
+    #         feature = features[i].cpu().detach().numpy()
+    #         folder_dir = os.path.join(saving_dir, vid[i])
+    #         if not os.path.exists(folder_dir):
+    #             os.mkdir(folder_dir)
+    #         feat_path = os.path.join(folder_dir, imagePath[i])
+    #         np.save(feat_path, feature)
 
 
-    saving_dir = os.path.join(dataset_path, out_name, 'val')
-    print(saving_dir)
-    if not os.path.exists(saving_dir):
-        os.makedirs(saving_dir)
-    for batch in tqdm(dataset.val_loader):
-        image = batch[0]['image'].to(device)
-        vid = batch[0]['vid']
-        imagePath = batch[0]['imagePath']
-        with torch.no_grad():
-            features = net(image).flatten(1)
+    # saving_dir = os.path.join(dataset_path, out_name, 'val')
+    # print(saving_dir)
+    # if not os.path.exists(saving_dir):
+    #     os.makedirs(saving_dir)
+    # for batch in tqdm(dataset.val_loader):
+    #     image = batch[0]['image'].to(device)
+    #     vid = batch[0]['vid']
+    #     imagePath = batch[0]['imagePath']
+    #     with torch.no_grad():
+    #         features = net(image).flatten(1)
 
-        for i in range(features.size()[0]):
-            feature = features[i].cpu().detach().numpy()
-            folder_dir = os.path.join(saving_dir, vid[i])
-            if not os.path.exists(folder_dir):
-                os.mkdir(folder_dir)
-            feat_path = os.path.join(folder_dir, imagePath[i])
-            np.save(feat_path, feature)
+    #     for i in range(features.size()[0]):
+    #         feature = features[i].cpu().detach().numpy()
+    #         folder_dir = os.path.join(saving_dir, vid[i])
+    #         if not os.path.exists(folder_dir):
+    #             os.mkdir(folder_dir)
+    #         feat_path = os.path.join(folder_dir, imagePath[i])
+    #         np.save(feat_path, feature)
 
     saving_dir = os.path.join(dataset_path, out_name, 'test')
     print(saving_dir)
