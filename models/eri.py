@@ -105,7 +105,7 @@ class ERI(LightningModule):
 
         self.n_head = 4
         self.n_layers = 4
-        d_feed = 256
+        d_feed = 512
 
         # self.n_head = 8
         # self.n_layers = 6

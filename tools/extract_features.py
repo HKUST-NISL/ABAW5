@@ -16,7 +16,7 @@ if __name__ == '__main__':
         net = SMMNet().to(device)
         ckpt = torch.load(ckpt_path)['state_dict']
         net.load_state_dict(ckpt)
-        out_name = 'smm_pip_features'
+        out_name = 'smm2_pip_features'
         in_size = 299
     elif sys.argv[1] == 'res50':
         net = resnet50(include_top=False).to(device)
