@@ -85,7 +85,7 @@ class ERI(LightningModule):
         # )
 
         # feat_ch += 68*2
-        feat_ch = 272  # todo: res18 512,
+        feat_ch = 512
         feat_ch += 17
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
@@ -126,6 +126,12 @@ class ERI(LightningModule):
 
         self.test_vids = []
         self.exp_names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
+
+    def compute_reg_loss(self):
+        loss_w = 0.
+        for param in self.all_params:
+            loss_w += torch.sum(param ** 2)
+        return loss_w
 
     def configure_optimizers(self):
 
@@ -295,6 +301,9 @@ class ERI(LightningModule):
         data, labels = batch
         preds = self.forward_model(data)
         loss = self.compute_loss(preds, labels)
+
+        loss_2 = self.compute_reg_loss()
+        loss += (loss_2 * 0.00001)
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
