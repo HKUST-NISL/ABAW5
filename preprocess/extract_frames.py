@@ -174,7 +174,7 @@ def get_video_information(dataset_folder_path='dataset/train/',
             video_information.append(videoEntry)
 
     df = pd.DataFrame(video_information, vids, columns=['FPS', 'height', 'width', 'eye distance'])
-    df.to_csv('./dataset/pipnet_align/train_video_info.csv')
+    df.to_csv(csv_name)
 
 
 if __name__ == "__main__":
