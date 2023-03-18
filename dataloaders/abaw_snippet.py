@@ -68,7 +68,7 @@ class ABAWDataset(Dataset):
         indexList = ['Train', 'Val', 'Test']
         self.set_type = indexList[trainIndex]
         self.set_dir = self.set_type.lower()
-        self.align_path = os.path.join(dataset_folder_path, args['aligned'], self.set_dir)
+        self.align_path = os.path.join(dataset_folder_path, args['aligned'], self.set_dir, 'aligned')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
@@ -99,7 +99,7 @@ class ABAWDataset(Dataset):
         nums = []
         labels = []
         all_data_files = glob.glob(self.features_path + '/*')
-        for data_file in all_data_files[:2]:
+        for data_file in all_data_files: #[:2]:
             file_name = data_file.split('/')[-1]
             file_id = '['+file_name+']'
             loc = df['File_ID'] == file_id
@@ -119,13 +119,14 @@ class ABAWDataset(Dataset):
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
-            au_info = self.align_path + '/' + file_name + '/' + file_name + '.csv'
+            data_entry['au_csv'] = self.align_path + '/' + file_name + '/' + file_name + '.csv'
+            '''au_info = self.align_path + '/' + file_name + '/' + file_name + '.csv'
             au_info = pd.read_csv(au_info).values
             au_info = au_info[:, 679:]
             au_info_r = au_info[:, :17]
             au_info_c = au_info[:, 17:]
             data_entry['au_r'] = au_info_r
-            data_entry['au_c'] = au_info_c
+            data_entry['au_c'] = au_info_c'''
 
             self.video_dict[file_name] = data_entry
             self.vid_list.append(file_name)
@@ -188,8 +189,17 @@ class ABAWDataset(Dataset):
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
-        data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
-        data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
+
+        au_info = pd.read_csv(video_entry['au_csv']).values
+        au_info = au_info[:, 679:]
+        au_info_r = au_info[:, :17]
+        au_info_c = au_info[:, 17:]
+        data['au_r'] = au_info_r
+        data['au_c'] = au_info_c
+
+        data['au_c'] = torch.from_numpy(data['au_c']).float()
+        data['au_r'] = torch.from_numpy(data['au_r']).float()
+
 
         age = int(video_entry['age']) - 15
         if age > 34: age = 49
