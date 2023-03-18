@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 import pandas as pd
 import seaborn as sn
 import torch
@@ -286,16 +286,24 @@ class ERI(LightningModule):
         
         return loss
 
-    # def compute_reg_loss(self):
-        
+    def compute_reg_loss(self):
 
+        loss_w = 0.
+        for param in self.all_params:
+            loss_w += torch.mean(torch.sum(param**2)**0.5)
+        
+        return loss_w / len(self.all_params)
+        
 
     def training_step(self, batch, batch_idx):
         # TODO: add logging for each step, also calculate epoch loss in training_epoch_end
         # loss = self._calculate_loss(batch, mode="train")
         data, labels = batch
         preds = self.forward_model(data)
-        loss = self.compute_loss(preds, labels)
+        loss_1 = self.compute_loss(preds, labels)
+        loss_2 = self.compute_reg_loss()
+
+        loss = loss_1 + loss_2 * 0.1
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
@@ -346,9 +354,12 @@ class ERI(LightningModule):
         return result
     
     def test_epoch_end(self, test_step_outputs):
-
+        
+        l2_w = []
         for name, params in self.named_parameters():
             print(name, torch.mean(torch.sum(params**2)**0.5).item())
+            l2_w.append(torch.mean(torch.sum(params**2)**0.5).item())
+        print(np.mean(l2_w))
 
         preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
         values = preds.detach().cpu().numpy()
