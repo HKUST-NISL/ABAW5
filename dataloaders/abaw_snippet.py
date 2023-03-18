@@ -48,6 +48,8 @@ class Collator(object):
         batch_x['vid'] = [x['vid'] for x in data]
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
+        batch_x['au_c'] = [x['au_c'] for x in data]
+        batch_x['au_r'] = [x['au_r'] for x in data]
 
         return batch_x, batch_y
 
@@ -135,13 +137,23 @@ class ABAWDataset(Dataset):
             else:
                 max_len = 800
                 img_names = sorted([ names[ind] for ind in ind_orderd[:max_len]])
-            image_paths = [os.path.join(self.data_dir, self.set_dir, 
-                                        'aligned', file_name, file_name+'_aligned',
+            image_paths = [os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                        file_name, file_name+'_aligned',
                                         name) for name in img_names]
 
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
+
+
+            au_info_path = os.path.join(self.data_dir, 'openface_align', 
+                                        self.set_dir, file_name, file_name+'.csv')
+            au_info = pd.read_csv(au_info_path).values
+            au_info = au_info[:, 679:]
+            au_info_r = au_info[:, :17]
+            au_info_c = au_info[:, 17:]
+            data_entry['au_r'] = au_info_r
+            data_entry['au_c'] = au_info_c
 
             self.video_dict[file_name] = data_entry
             self.vid_list.append(file_name)
@@ -204,6 +216,9 @@ class ABAWDataset(Dataset):
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
+
+        data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
+        data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
 
         # age = int(video_entry['age']) - 15
         # if age > 34: age = 49

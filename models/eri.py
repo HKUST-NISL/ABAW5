@@ -84,7 +84,7 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
-        # feat_ch += 68*2
+        feat_ch += 17
         hidden_ch = 512
 
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
@@ -189,16 +189,15 @@ class ERI(LightningModule):
 
     def forward_model_seq(self, data):
         input = data['images']
-        # age_con = data['age_con'].to(self.device)
+        AU = data['au_r']
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
-            if self.features == 'image':
-                n, c, h, w = x.shape
-                x = self.model(x.view(n, c, h, w)).view(n, -1)
-            else:
-                n, c = x.shape
+            au = AU[i].to(self.device)
+            x = torch.cat((x, au), dim=1)
+
+            n, c = x.shape
 
             # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
