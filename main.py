@@ -41,14 +41,14 @@ def main(args):
     else:
         print('Invalid model')
 
-    if args.checkpoint == 'None':
-        args.checkpoint = None
+    # if args.checkpoint == 'None':
+    #     args.checkpoint = None
 
     logger = TensorBoardLogger(save_dir=args.log_dir, name=args.log_name)
 
     trainer = Trainer(deterministic=True,
                       num_sanity_val_steps=2,
-                      resume_from_checkpoint=args.checkpoint,
+                      resume_from_checkpoint=None,
                       logger=logger,
                       gpus=args.gpus,
                       gradient_clip_val=args.clip_val,
@@ -64,7 +64,7 @@ def main(args):
         trainer.fit(model, data_module.train_loader, data_module.val_loader)
         trainer.test(model=model, dataloaders=data_module.test_loader)
     else:
-        model = model.load_from_checkpoint(args.checkpoint, args=args)
+        model = model.load_from_checkpoint(checkpoint_path=args.test_ckpt, **vars(args))
         trainer.test(model=model, dataloaders=data_module.test_loader)
 
 
@@ -90,7 +90,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
 
     # Restart Control
-    parser.add_argument('--checkpoint', default='None', type=str)
+    # parser.add_argument('--checkpoint', default='None', type=str)
+    parser.add_argument('--test_ckpt', default='None', type=str)
 
     # Training Info
     parser.add_argument('--train', default='True', type=str)

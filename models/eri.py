@@ -340,8 +340,10 @@ class ERI(LightningModule):
     
     def test_epoch_end(self, test_step_outputs):
 
-        preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
+        for name, params in self.named_parameters():
+            print(name, params.shape)
 
+        preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
         values = preds.detach().cpu().numpy()
 
         df = pd.DataFrame(values, columns=self.exp_names, index=self.test_vids)
