@@ -66,7 +66,7 @@ class ABAWDataset(Dataset):
         indexList = ['Train', 'Val', 'Test']
         self.set_type = indexList[trainIndex]
         self.set_dir = self.set_type.lower()
-        data_path = os.path.join(dataset_folder_path, self.set_dir, 'aligned')
+        self.align_path = os.path.join(dataset_folder_path, args['aligned'], self.set_dir)
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
@@ -77,12 +77,12 @@ class ABAWDataset(Dataset):
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
-        self.features = args['features']
-        self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
+        self.features_path = os.path.join(dataset_folder_path, args['features'], self.set_dir)
+        #self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
-        self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
+        #self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
         # self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
-        self.lmk_dir = 'pipnet_landmarks'
+        #self.lmk_dir = 'pipnet_landmarks'
 
 
         self.transform = create_transform(self.input_size)
@@ -96,12 +96,10 @@ class ABAWDataset(Dataset):
         snums = []
         nums = []
         labels = []
-        for file_id in df_data['File_ID'].values:
-        # for file_id in df_data['File_ID'].values[:100]:
-            # file_id = os.path.basename(data_file)
-            # loc = df['File_ID'] == '['+file_id+']'
-
-            file_name = file_id.replace('[', '').replace(']', '')
+        all_data_files = glob.glob(self.features_path + '/*')
+        for data_file in all_data_files[:2]:
+            file_name = data_file.split('/')[-1]
+            file_id = '['+file_name+']'
             loc = df['File_ID'] == file_id
             info = df[loc]
             if info.empty: continue
@@ -114,30 +112,7 @@ class ABAWDataset(Dataset):
 
             # data_entry['videoPath'] = data_file
             data_entry['intensity'] = np.array(intensity)
-            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
-            diff_df = pd.read_csv(df_path, index_col=0)
-            scores = diff_df['1'].values
-            ind_orderd = np.argsort(scores).tolist()[::-1]
-
-            if len(ind_orderd) < 50:
-                # print(file_id, len(ind_orderd))
-                vids.append(file_name)
-                snums.append(len(ind_orderd))
-
-                if len(ind_orderd) == 0: continue
-
-                ind_orderd *= 50 // len(ind_orderd)
-                ind_orderd += ind_orderd[:50 % len(ind_orderd)]
-
-            names = diff_df.index.to_list()
-            if self.snippet_size > 0:
-                img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
-            else:
-                max_len = 800
-                img_names = sorted([ names[ind] for ind in ind_orderd[:max_len]])
-            image_paths = [os.path.join(self.data_dir, self.set_dir, 
-                                        'aligned', file_name, file_name+'_aligned',
-                                        name) for name in img_names]
+            image_paths = natsort.natsorted(glob.glob(self.features_path + '/' + file_name + '/*.npy'))
 
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
@@ -181,11 +156,11 @@ class ABAWDataset(Dataset):
 
         for path in sel_paths:
             img_name = os.path.basename(path)[:-4]
-            if self.features == 'image':
+            '''if self.features == 'image':
                 input = self.transform(Image.open(path)).unsqueeze(0)
-            else:
-                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
-                input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
+            else:'''
+            feat_path = os.path.join(self.features_path, vid_name, img_name+'.npy')
+            input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
 
         if self.snippet_size > 0:

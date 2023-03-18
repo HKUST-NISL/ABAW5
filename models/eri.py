@@ -85,6 +85,7 @@ class ERI(LightningModule):
         # )
 
         # feat_ch += 68*2
+        feat_ch = 512
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)

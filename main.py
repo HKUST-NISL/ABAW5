@@ -71,11 +71,11 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     # Basic Training Control
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--num_workers', default=8, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--num_workers', default=2, type=int)
     parser.add_argument('--seed', default=1234, type=int)
-    parser.add_argument('--lr', default=1e-3, type=float)
-    parser.add_argument('-gpus', default='1', type=str)
+    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('-gpus', default='0', type=str)
 
     parser.add_argument('--grad_accumulate', type=int, default=1)
     parser.add_argument('--clip_val', default=1.0, type=float)
@@ -83,9 +83,9 @@ if __name__ == '__main__':
     parser.add_argument('--val_check_interval', default=1.0, type=float)
 
     # LR Scheduler
-    parser.add_argument('--optimizer', default='adam', type=str)
-    parser.add_argument('--lr_scheduler', choices=['step', 'cosine', 'exponential'], default='cosine', type=str)
-    parser.add_argument('--lr_decay_steps', default=20, type=int)
+    parser.add_argument('--optimizer', default='adamw', type=str)
+    parser.add_argument('--lr_scheduler', choices=['step', 'cosine', 'exponential'], default='step', type=str)
+    parser.add_argument('--lr_decay_steps', default=10, type=int)
     parser.add_argument('--lr_decay_rate', default=0.5, type=float)
     parser.add_argument('--lr_decay_min_lr', default=1e-5, type=float)
 
@@ -94,13 +94,14 @@ if __name__ == '__main__':
 
     # Training Info
     parser.add_argument('--train', default='True', type=str)
-    parser.add_argument('--data_dir', default='./dataset/abaw5', type=str)
+    parser.add_argument('--data_dir', default='dataset/', type=str)
     parser.add_argument('--diff_dir', default='', type=str)
     parser.add_argument('--pretrained', default='pretrained/model-epoch=07-val_total=1.54.ckpt', type=str)
     parser.add_argument('--input_size', default=224, type=int)
-    parser.add_argument('--snippet_size', default=30, type=int)
-    parser.add_argument('--sample_times', default=5, type=int)
-    parser.add_argument('--features', default='smm', type=str) # image, smm, res50
+    parser.add_argument('--snippet_size', default=0, type=int)
+    parser.add_argument('--sample_times', default=1, type=int)
+    parser.add_argument('--features', default='features/', type=str) # image, smm, res50
+    parser.add_argument('--aligned', default='aligned/', type=str)
     parser.add_argument('--feat_dir', default='', type=str)
     parser.add_argument('--sampling_strategy', default=0, type=int)
 
