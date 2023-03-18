@@ -85,7 +85,8 @@ class ERI(LightningModule):
         # )
 
         # feat_ch += 68*2
-        feat_ch = 512
+        feat_ch = 272  # todo: res18 512,
+        feat_ch += 17
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -180,10 +181,13 @@ class ERI(LightningModule):
     def forward_model_seq(self, data):
         input = data['images']
         age_con = data['age_con'].to(self.device)
+        AU = data['au_r']
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
+            au = AU[i].to(self.device)
+            x = torch.cat((x, au), dim=1)
             if self.features == 'image':
                 n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
@@ -231,7 +235,8 @@ class ERI(LightningModule):
 
 
         feats = torch.cat(feats, dim = 0)
-        preds = torch.sigmoid(self.head(feats))
+        #preds = torch.sigmoid(self.head(feats))
+        preds = self.head(feats)
 
         return preds
     
