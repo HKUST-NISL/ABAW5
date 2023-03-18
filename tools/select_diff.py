@@ -14,8 +14,8 @@ import pandas as pd
 # Parse arguments
 parser = argparse.ArgumentParser(description='PyTorch Emotion Training')
 # Datasets
-parser.add_argument('--data_dir',  default='./dataset/abaw5/pipnet_align', type=str)
-parser.add_argument('--out_dir',  default='./dataset/abaw5/pipnet_diffs', type=str)
+parser.add_argument('--data_dir',  default='./dataset/abaw5/openface_align', type=str)
+parser.add_argument('--out_dir',  default='./dataset/abaw5/abaw5_diffs_rm', type=str)
 
 
 def run(args):
@@ -32,7 +32,7 @@ def run(args):
 
         os.makedirs(diff_dir, exist_ok=True)
 
-        vid_dirs = sorted(glob(os.path.join(args.data_dir, set_type, '*')))
+        vid_dirs = sorted(glob(os.path.join(args.data_dir, set_type, 'aligned', '*')))
         for vid_dir in tqdm(vid_dirs):
 
             vid_name = os.path.basename(vid_dir)

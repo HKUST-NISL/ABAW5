@@ -85,7 +85,6 @@ class ABAWDataset(Dataset):
         # self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
         self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
 
-
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
@@ -115,46 +114,20 @@ class ABAWDataset(Dataset):
 
             # data_entry['videoPath'] = data_file
             data_entry['intensity'] = np.array(intensity)
-            df_path = os.path.join(self.data_dir, self.diff_dir, self.set_dir, file_name+'.csv')
-            diff_df = pd.read_csv(df_path, index_col=0)
-            scores = diff_df['1'].values
-            ind_orderd = np.argsort(scores).tolist()[::-1]
 
-            if len(ind_orderd) < 50:
-                # print(file_id, len(ind_orderd))
-                vids.append(file_name)
-                snums.append(len(ind_orderd))
-
-                if len(ind_orderd) == 0: continue
-
-                ind_orderd *= 50 // len(ind_orderd)
-                ind_orderd += ind_orderd[:50 % len(ind_orderd)]
-
-            au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-                                        'aligned', file_name, file_name+'.csv')
-            au_info = pd.read_csv(au_info_path).values
-            au_info = au_info[:, 679:]
-            
-
-            names = diff_df.index.to_list()
-            if self.snippet_size > 0:
-                img_names = [ names[ind] for ind in ind_orderd[:self.snippet_size]] 
-            else:
-                max_len = 800
-                img_names = sorted([ names[ind] for ind in ind_orderd[:max_len]])
-            
-            inds = [int(name[-10:-4])-1 for name in img_names]
-            au_info_r = au_info[inds, :17]
-            au_info_c = au_info[inds, 17:]
-            image_paths = [os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-                                        file_name, file_name+'_aligned',
-                                        name) for name in img_names]
+            feature_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, file_name)
+            image_paths = sorted(glob.glob(os.path.join(feature_path, '*.npy')))
 
             data_entry['image_paths'] = image_paths
             data_entry['age'] = np.array(age)
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
-
+            au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                        'aligned', file_name, file_name+'.csv')
+            au_info = pd.read_csv(au_info_path).values
+            au_info = au_info[:, 679:]
+            au_info_r = au_info[:, :17]
+            au_info_c = au_info[:, 17:]
             data_entry['au_r'] = au_info_r
             data_entry['au_c'] = au_info_c
 
@@ -193,18 +166,6 @@ class ABAWDataset(Dataset):
         sel_paths = image_paths
 
         inputs = []
-        auc_list = []
-        aur_list = []
-
-        # au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-        #                                 'aligned', file_name, file_name+'.csv')
-        # au_info = pd.read_csv(au_info_path).values
-        # au_info = au_info[:, 679:]
-        # au_info_r = au_info[:, :17]
-        # au_info_c = au_info[:, 17:]
-        # data_entry['au_r'] = au_info_r
-        # data_entry['au_c'] = au_info_c
-        
         for path in sel_paths:
             img_name = os.path.basename(path)[:-4]
             if self.features == 'image':
@@ -214,15 +175,6 @@ class ABAWDataset(Dataset):
                 input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
 
-        if self.snippet_size > 0:
-            tokens = 1
-            mask = torch.ones(self.snippet_size + tokens)
-            if len(inputs) < self.snippet_size:
-                mask[len(inputs) + tokens:] = 0
-                inputs.extend([torch.zeros(inputs[0].shape)] * (self.snippet_size - len(inputs)))
-
-            mask = torch.matmul(mask.view(-1, 1), mask.view(1, -1))
-            data['mask'] = mask.float()
 
         data['images'] = torch.cat(inputs, 0)
         data['vid'] = vid_name
@@ -234,15 +186,6 @@ class ABAWDataset(Dataset):
         data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
         data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
 
-        # age = int(video_entry['age']) - 15
-        # if age > 34: age = 49
-        # if age < 0: age = 0
-        # age_bin = age // 5
-        # age_con = torch.zeros((8))
-        # age_con[age_bin] = 1
-        # age_con[7] = int(video_entry['country'])
-        # data['age_con'] = 0
-        
         return data
 
     def __len__(self):
