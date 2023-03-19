@@ -44,7 +44,7 @@ class Collator(object):
             batch_x['images'] = [x['images'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
-        batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
+        #batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
         batch_x['vid'] = [x['vid'] for x in data]
         batch_x['au_c'] = [x['au_c'] for x in data]
         batch_x['au_r'] = [x['au_r'] for x in data]
@@ -201,14 +201,14 @@ class ABAWDataset(Dataset):
         data['gaze'] = torch.from_numpy(data['gaze']).float()
         data['pose'] = torch.from_numpy(data['pose']).float()
 
-        age = int(video_entry['age']) - 15
+        '''age = int(video_entry['age']) - 15
         if age > 34: age = 49
         if age < 0: age = 0
         age_bin = age // 5
         age_con = torch.zeros((8))
         age_con[age_bin] = 1
         age_con[7] = int(video_entry['country'])
-        data['age_con'] = age_con
+        data['age_con'] = age_con'''
         
         return data
 

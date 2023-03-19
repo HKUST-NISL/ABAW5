@@ -164,7 +164,7 @@ class ERI(LightningModule):
 
     def forward_model_mask(self, data):
         x = data['images'].to(self.device)
-        age_con = data['age_con'].to(self.device)
+        #age_con = data['age_con'].to(self.device)
 
         mask = data['mask'].to(self.device)
         mask = torch.cat([mask] * self.n_head, dim=0)
@@ -189,7 +189,7 @@ class ERI(LightningModule):
 
     def forward_model_seq(self, data):
         input = data['images']
-        age_con = data['age_con'].to(self.device)
+        #age_con = data['age_con'].to(self.device)
         AU1 = data['au_r']
         AU2 = data['au_c']
         gaze=data['gaze'] #size:8
