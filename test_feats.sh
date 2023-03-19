@@ -4,8 +4,8 @@
 
 python main.py --snippet_size 0 --batch_size 48 --sample_times 1 \
 --optimizer adam --lr_scheduler cosine --lr 2e-5 \
---num_epochs 100 --num_workers 8 --data_dir ~/Data/abaw5 --features res18_pip --loss l2 \
---test_ckpt experiments/eri/version_207/checkpoints/best-epoch=11-val_apcc=0.363.ckpt \
+--num_epochs 100 --num_workers 8 --data_dir ~/Data/abaw5 --features res18 --loss l2 \
+--test_ckpt $1 \
 --train False
 
 

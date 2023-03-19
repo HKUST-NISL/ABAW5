@@ -250,10 +250,9 @@ class SMMNet(nn.Module):
             outputs['VA'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics)
             metrics['VA'] = EXPR_VA_metrics 
 
-        # print(outputs['EXPR'].shape, outputs['AU'].shape, outputs['EXPR'].shape)
-        out = torch.cat([EXPR_VA_metrics.flatten(1), AU_metrics.flatten(1)], dim=1)
-        return out
+        out = torch.cat([EXPR_VA_metrics.flatten(1), metrics['AU'].flatten(1)], dim=1)
 
+        return out
 
 
 if __name__ == '__main__':

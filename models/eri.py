@@ -84,8 +84,11 @@ class ERI(LightningModule):
         #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
         # )
 
-        feat_ch += 17
+        
         hidden_ch = 256
+
+        self.proj = nn.Linear(feat_ch, 17 * 16, bias=False)
+        feat_ch += 16 + 17
 
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -118,7 +121,7 @@ class ERI(LightningModule):
         self.head = nn.Sequential(
             nn.Linear(hidden_ch, 256, bias=False),
             # nn.ReLU(),
-            nn.Dropout(0.2),
+            nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
         )
 
@@ -147,7 +150,7 @@ class ERI(LightningModule):
         # ]
 
         if self.optim_type == 'adamw':
-            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.01)
+            optimizer = optim.AdamW(self.parameters(), lr=self.lr, weight_decay=0.5)
         elif self.optim_type == 'adam':
             optimizer = optim.Adam(self.parameters(), lr=self.lr)
         elif self.optim_type == 'sgd':
@@ -190,15 +193,20 @@ class ERI(LightningModule):
     def forward_model_seq(self, data):
         input = data['images']
         AU = data['au_r']
+        AUC = data['au_c']
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
             au = AU[i].to(self.device)
-            # print(x.shape, au.shape)
-            x = torch.cat([x, au], dim=1)
+            # auc = AUC[i].to(self.device)
 
+            # print(x.shape, au.shape)
+            # x = torch.cat([x, au, auc], dim=1)
             n, c = x.shape
+            # print(x.shape, self.proj(x).shape, au.shape)
+            x_proj = torch.sum(self.proj(x).reshape(n, 17, 16) * au.reshape(n, 17, 1), dim=1)
+            x = torch.cat([x, x_proj, au], dim=1)
 
             # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
@@ -242,7 +250,8 @@ class ERI(LightningModule):
 
 
         feats = torch.cat(feats, dim = 0)
-        preds = torch.sigmoid(self.head(feats))
+        # preds = torch.sigmoid(self.head(feats))
+        preds = self.head(feats)
 
         return preds
     

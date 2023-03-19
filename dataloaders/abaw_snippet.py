@@ -108,7 +108,7 @@ class ABAWDataset(Dataset):
             snums = []
             nums = []
             labels = []
-            for file_id in df_data['File_ID'].values:
+            for file_id in tqdm(df_data['File_ID'].values):
             # for file_id in df_data['File_ID'].values[:100]:
                 # file_id = os.path.basename(data_file)
                 # loc = df['File_ID'] == '['+file_id+']'
@@ -156,13 +156,13 @@ class ABAWDataset(Dataset):
                 nums.append(len(image_paths))
                 labels.append(data_entry['intensity'].reshape((1, -1)))
 
-                data = {}
-                data['all_image_lists'] = self.all_image_lists
-                data['vid_list'] = self.vid_list
-                data['video_dict'] = self.video_dict
+            data = {}
+            data['all_image_lists'] = self.all_image_lists
+            data['vid_list'] = self.vid_list
+            data['video_dict'] = self.video_dict
 
-                with open(pickle_path, 'wb') as handle:
-                    pickle.dump(data, handle)
+            with open(pickle_path, 'wb') as handle:
+                pickle.dump(data, handle)
 
             df = pd.DataFrame(snums, columns=['numbers'], index=vids)
             df.to_csv(num_path)
@@ -237,7 +237,7 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
                                         num_workers=num_workers,
                                         collate_fn=collate_fn)
         else:
-            test_set = ABAWDataset(1, **args)
+            test_set = ABAWDataset(2, **args)
             self.test_loader = DataLoader(dataset=test_set,
                                         batch_size=args['batch_size'],
                                         shuffle=False,
