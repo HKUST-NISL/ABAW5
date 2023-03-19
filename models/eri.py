@@ -357,17 +357,46 @@ class ERI(LightningModule):
         data, labels = batch
         self.test_vids.extend(data['vid'])
         preds = self.forward_model(data)
-        result = {"val_preds": preds}
+        result = {"test_preds": preds}
         return result
     
     def test_epoch_end(self, test_step_outputs):
+        ind_col = 'File_ID'
 
-        preds = torch.cat([data['val_preds'] for data in test_step_outputs], dim=0)
+        df_info = pd.read_csv('dataset/abaw5/data_info.csv', index_col=0)
 
+        df_gt = df_info[df_info['Split'] == 'Test']
+        df_gt = df_gt[self.exp_names].sort_index()
+
+        preds = torch.cat([data['test_preds'] for data in test_step_outputs], dim=0)
         values = preds.detach().cpu().numpy()
 
-        df = pd.DataFrame(values, columns=self.exp_names, index=self.test_vids)
-        df.to_csv('dataset/abaw5_results/test.csv')
+        df_test = pd.DataFrame(values, columns=self.exp_names)
+        df_test[ind_col] = ['[' + x + ']' for x in self.test_vids]
+
+        new_cols = ['File_ID'] + self.exp_names
+        df_test = df_test[new_cols].set_index(ind_col)
+
+        for vid in df_gt.index:
+            if vid not in df_test.index:
+                print(vid)
+                df_test.loc[vid] = df_test.mean()
+
+        df_test = df_test.sort_index()
+        preds = df_test.values
+        labels = df_gt.values
+
+        # def cal_pcc(preds, labels):
+        #     preds_mean = np.mean(preds, axis=0, keepdims=True)
+        #     labels_mean = np.mean(labels, axis=0, keepdims=True)
+
+        #     pcc = np.sum((preds-preds_mean) * (labels-labels_mean), axis=0) / \
+        #         np.clip((np.sum((preds-preds_mean)**2, axis=0) * np.sum((labels-labels_mean)**2, axis=0))**0.5, a_min=1e-8, a_max=None)
+
+        #     return np.mean(pcc)
+        # print(cal_pcc(preds, labels))
+
+        df_test.reset_index().to_csv('dataset/abaw5_results/predictions.csv', index=False)
 
         return
 

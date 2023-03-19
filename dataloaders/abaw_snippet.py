@@ -225,7 +225,7 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         num_workers = args['num_workers']
         train_set = ABAWDataset(0, **args)
         val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(1, **args)
+        test_set = ABAWDataset(2, **args)
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
 
