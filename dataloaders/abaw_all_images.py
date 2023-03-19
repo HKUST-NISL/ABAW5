@@ -25,7 +25,7 @@ class ABAWDataset(Dataset):
         self.transform = create_transform(self.input_image_size)
         dataset_folder_path = args['data_dir']
         indexList = ['train', 'val', 'test']
-        data_path = os.path.join(dataset_folder_path, 'pipnet_align', indexList[trainIndex])
+        data_path = os.path.join(dataset_folder_path, 'openface_align', indexList[trainIndex], 'aligned')
         self.data_path_feature = os.path.join(dataset_folder_path, indexList[trainIndex], 'vgg_features')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
@@ -36,6 +36,7 @@ class ABAWDataset(Dataset):
 
         for data_file in glob.glob(data_path + '/*'):
             file_name = data_file.split('/')[-1]
+            if not file_name.isdigit(): continue
             loc = df['File_ID'] == '['+file_name+']'
             info = df[loc]
             assert info.iat[0, 1].lower() == indexList[trainIndex]
