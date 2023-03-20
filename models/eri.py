@@ -87,8 +87,8 @@ class ERI(LightningModule):
         
         hidden_ch = 256
 
-        self.proj = nn.Linear(feat_ch, 17 * 16, bias=False)
-        feat_ch += 16 + 17
+        # self.proj = nn.Linear(feat_ch, 17 * 16, bias=False)
+        feat_ch += 18 + 17
 
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -199,14 +199,14 @@ class ERI(LightningModule):
         for i in range(len(input)):
             x = input[i].to(self.device)
             au = AU[i].to(self.device)
-            # auc = AUC[i].to(self.device)
+            auc = AUC[i].to(self.device)
 
             # print(x.shape, au.shape)
-            # x = torch.cat([x, au, auc], dim=1)
+            x = torch.cat([x, au, auc], dim=1)
             n, c = x.shape
             # print(x.shape, self.proj(x).shape, au.shape)
-            x_proj = torch.sum(self.proj(x).reshape(n, 17, 16) * au.reshape(n, 17, 1), dim=1)
-            x = torch.cat([x, x_proj, au], dim=1)
+            # x_proj = torch.sum(self.proj(x).reshape(n, 17, 16) * au.reshape(n, 17, 1), dim=1)
+            # x = torch.cat([x, x_proj, au], dim=1)
 
             # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
@@ -317,10 +317,10 @@ class ERI(LightningModule):
         # loss = self._calculate_loss(batch, mode="train")
         data, labels = batch
         preds = self.forward_model(data)
-        loss_1 = self.compute_loss(preds, labels)
-        loss_2 = self.compute_reg_loss()
-
-        loss = loss_1 + loss_2 * 0.00001
+        loss = self.compute_loss(preds, labels)
+        
+        # loss_2 = self.compute_reg_loss()
+        # loss = loss_1 + loss_2 * 0.00001
 
         result = {"train_preds": preds,   
                   "train_labels": labels,
