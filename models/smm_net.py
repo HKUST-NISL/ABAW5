@@ -26,6 +26,7 @@ class AUClassifier(nn.Module):
         self.fc = nn.Linear(in_channels, out_channels)
 
     def forward(self, seq_input):
+        print(seq_input.shape)
         bs, seq_len = seq_input.size(0), seq_input.size(1)
         weight = self.fc.weight
         bias = self.fc.bias
@@ -226,19 +227,38 @@ class SMMNet(nn.Module):
             EXPR_VA_metrics.append(projected)
         EXPR_VA_metrics = torch.stack(EXPR_VA_metrics, dim=1) # bs, numeber of regions, dim
 
-        if self.avg_features:
+        if not self.avg_features:
+            bs, length = EXPR_VA_metrics.size(0), EXPR_VA_metrics.size(1)
+            # EXPR classifier
+            i_classifier = self.tasks.index('EXPR')
+            outputs['EXPR'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics.view((bs*length, -1))).view((bs, length, -1))
+            metrics['EXPR'] = EXPR_VA_metrics
+
+            # VA classifier
+            i_classifier = self.tasks.index('VA')
+            outputs['VA'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics.view((bs*length, -1))).view((bs, length, -1))
+            metrics['VA'] = EXPR_VA_metrics
+        else:
             EXPR_VA_metrics = EXPR_VA_metrics.mean(1)
+            # EXPR classifier
+            i_classifier = self.tasks.index('EXPR')
+            outputs['EXPR'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics)
+            metrics['EXPR'] = EXPR_VA_metrics
 
-        
-        EXPR_VA_metrics = EXPR_VA_metrics.flatten(1)
-        return EXPR_VA_metrics
+            # VA classifier
+            i_classifier = self.tasks.index('VA')
+            outputs['VA'] = self.emotion_classifiers[i_classifier](EXPR_VA_metrics)
+            metrics['VA'] = EXPR_VA_metrics 
 
+        out = torch.cat([EXPR_VA_metrics.flatten(1), metrics['AU'].flatten(1)], dim=1)
+
+        return out
 
 
 if __name__ == '__main__':
     net = SMMNet()
 
-    x = torch.rand(4, 3, 256, 256)
+    x = torch.rand(4, 3, 299, 299)
 
     feats = net(x)
     print(feats.shape)

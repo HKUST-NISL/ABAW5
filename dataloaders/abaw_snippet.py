@@ -13,6 +13,7 @@ from dataloaders.sampling_strategy import SamplingStrategy
 import torch
 import os
 from torchvision import transforms
+import pickle
 
 def create_transform(in_size=224):
     transform = transforms.Compose([
@@ -25,8 +26,9 @@ def create_transform(in_size=224):
     return transform   
 
 class Collator(object):
-    def __init__(self):
+    def __init__(self, flag=False):
         super().__init__()
+        self.flag = flag
 
     def __call__(self, data):
         '''
@@ -36,11 +38,20 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        batch_x['images'] = torch.stack([x['images'] for x in data])
+        if not self.flag:
+            batch_x['images'] = torch.stack([x['images'] for x in data])
+            batch_x['mask'] = torch.stack([x['mask'] for x in data])
+        else:
+            batch_x['images'] = [x['images'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
+        # batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
+        batch_x['vid'] = [x['vid'] for x in data]
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
+        batch_x['au_c'] = [x['au_c'] for x in data]
+        batch_x['au_r'] = [x['au_r'] for x in data]
+
         return batch_x, batch_y
 
 
@@ -52,84 +63,149 @@ class ABAWDataset(Dataset):
         :returns country is 0 if US, 1 if SA
         '''
         #self.imgRandomLen = 10 #for the time being
-        self.sampling = SamplingStrategy()
+        # self.sampling = SamplingStrategy()
         dataset_folder_path = args['data_dir']
-        indexList = ['train', 'val', 'test']
-        data_path = os.path.join(dataset_folder_path, indexList[trainIndex], 'aligned')
+        self.data_dir = dataset_folder_path
+        indexList = ['Train', 'Val', 'Test']
+        self.set_type = indexList[trainIndex]
+        self.set_dir = self.set_type.lower()
+        data_path = os.path.join(dataset_folder_path, self.set_dir, 'aligned')
 
         data_info_path = os.path.join(dataset_folder_path, 'data_info.csv')
         df = pd.read_csv(data_info_path)
 
+        df_data = df[df['Split']==self.set_type]
+        # print(df_data)
+
         self.snippet_size = args['snippet_size']
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
+        self.features = args['features']
+        self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
+        # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
+        # self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
+        self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']
 
         self.transform = create_transform(self.input_size)
         self.all_image_lists = []
         self.video_dict = {}
         self.vid_list = []
-        print('Initializing %s' % (indexList[trainIndex]))
-        # for data_file in glob.glob(data_path + '/*'):
-        for data_file in glob.glob(data_path + '/*')[:300]:
-            file_name = data_file.split('/')[-1]
-            loc = df['File_ID'] == '['+file_name+']'
-            info = df[loc]
-            if info.empty: continue
-            assert info.iat[0, 1].lower() == indexList[trainIndex]
-            data_entry = {}
-            intensity = info.iloc[0, 2:9].tolist()
-            age = info.iloc[0, 9]
-            country = info.iloc[0, 10]
-            assert country == 'United States' or 'South Africa'
+        print('Initializing %s' % (self.set_dir))
 
-            # data_entry['videoPath'] = data_file
+        pickle_path = os.path.join(self.data_dir, self.set_type + '_data.pkl')
+        if os.path.exists(pickle_path):
 
-            data_entry['intensity'] = np.array(intensity)
-            folder = data_file.split('/')[-1]
-            # get the indices
-            image_paths = natsort.natsorted(glob.glob(data_file + '/' + folder + '_aligned/frame*.jpg'))
-            data_entry['image_paths'] = image_paths
-            data_entry['age'] = np.array(age)
-            data_entry['country'] = np.array(0 if country == 'United States' else 1)
+            with open(pickle_path, 'rb') as handle:
+                data = pickle.load(handle)
 
-            self.video_dict[file_name] = data_entry
-            self.vid_list.append(file_name)
+            self.all_image_lists = data['all_image_lists']
+            self.vid_list = data['vid_list']
+            self.video_dict = data['video_dict']
 
-            for img_path in image_paths:
-                this_image = {
-                    'path': img_path,
-                    'vid': file_name,
-                }
-                self.all_image_lists.append(this_image)
+        else:
+            num_path = './dataset/%s_num.csv' % self.set_dir
+            vids = []
+            snums = []
+            nums = []
+            labels = []
+            for file_id in tqdm(df_data['File_ID'].values):
+            # for file_id in df_data['File_ID'].values[:100]:
+                # file_id = os.path.basename(data_file)
+                # loc = df['File_ID'] == '['+file_id+']'
+
+                file_name = file_id.replace('[', '').replace(']', '')
+                loc = df['File_ID'] == file_id
+                info = df[loc]
+                if info.empty: continue
+                # assert info.iat[0, 1].lower() == indexList[trainIndex]
+                data_entry = {}
+                intensity = info.iloc[0, 2:9].tolist()
+                age = info.iloc[0, 9]
+                country = info.iloc[0, 10]
+                assert country == 'United States' or 'South Africa'
+
+                # data_entry['videoPath'] = data_file
+                data_entry['intensity'] = np.array(intensity)
+
+                feature_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, file_name)
+                image_paths = sorted(glob.glob(os.path.join(feature_path, '*.npy')))
+
+                data_entry['image_paths'] = image_paths
+                data_entry['age'] = np.array(age)
+                data_entry['country'] = np.array(0 if country == 'United States' else 1)
+
+                au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                            'aligned', file_name, file_name+'.csv')
+                au_info = pd.read_csv(au_info_path).values
+                au_info = au_info[:, 679:]
+                au_info_r = au_info[:, :17]
+                au_info_c = au_info[:, 17:]
+                data_entry['au_r'] = au_info_r
+                data_entry['au_c'] = au_info_c
+
+                self.video_dict[file_name] = data_entry
+                self.vid_list.append(file_name)
+
+                for img_path in image_paths:
+                    this_image = {
+                        'path': img_path,
+                        'vid': file_name,
+                    }
+                    self.all_image_lists.append(this_image)
+
+                nums.append(len(image_paths))
+                labels.append(data_entry['intensity'].reshape((1, -1)))
+
+            data = {}
+            data['all_image_lists'] = self.all_image_lists
+            data['vid_list'] = self.vid_list
+            data['video_dict'] = self.video_dict
+
+            with open(pickle_path, 'wb') as handle:
+                pickle.dump(data, handle)
+
+            df = pd.DataFrame(snums, columns=['numbers'], index=vids)
+            df.to_csv(num_path)
 
         self.args = args
+
         self.vid_list = self.vid_list * self.sample_times
-        # if trainIndex > 0:
-        #     self.vid_list = self.vid_list * self.sample_times
+        # if trainIndex == 0:
+            # self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
-        print('%s: videos: %d images: %d' % (indexList[trainIndex], len(self.vid_list), len(self.all_image_lists)))
+        print('%s: videos: %d images: %d times: %d' % (
+            indexList[trainIndex], len(self.vid_list)//self.sample_times, 
+            len(self.all_image_lists), self.sample_times))
 
     def __getitem__(self, index):
         data = {}
-        # image_entry = self.all_image_lists[index]
-        # image_path = image_entry['path']
         vid_name = self.vid_list[index]
         image_paths = self.video_dict[vid_name]['image_paths']
-
         video_entry = self.video_dict[vid_name]
-        sel_paths = np.random.choice(image_paths, self.snippet_size, replace=False)
+        sel_paths = image_paths
+
         inputs = []
         for path in sel_paths:
-            input = self.transform(Image.open(path)).unsqueeze(0)
+            img_name = os.path.basename(path)[:-4]
+            if self.features == 'image':
+                input = self.transform(Image.open(path)).unsqueeze(0)
+            else:
+                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
+                input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
             inputs.append(input)
 
+
         data['images'] = torch.cat(inputs, 0)
-        
         data['vid'] = vid_name
-        data['intensity'] = torch.from_numpy(video_entry['intensity']).float()
+        intensity = torch.from_numpy(video_entry['intensity']).float()
+        data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
+
+        data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
+        data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
+
         return data
 
     def __len__(self):
@@ -139,29 +215,34 @@ class ABAWDataset(Dataset):
         return [len(sent) for sent in sents]
 
 
-class ABAWDataModule(pl.LightningDataModule):
+class ABAWDataModuleSnippet(pl.LightningDataModule):
     def __init__(self, **args):
         super().__init__()
-        train_set = ABAWDataset(0, **args)
-        val_set = ABAWDataset(1, **args)
-        test_set = ABAWDataset(1, **args)
-        collate_fn = Collator()
+        num_workers = args['num_workers']
+        is_train = (args['train'] == 'True')
+        flag = args['snippet_size'] == 0
+        collate_fn = Collator(flag)
 
-        self.train_loader = DataLoader(dataset=train_set,
-                                       batch_size=args['batch_size'],
-                                       shuffle=True,
-                                       num_workers=8,
-                                       collate_fn=collate_fn)
-        self.val_loader = DataLoader(dataset=val_set,
-                                     batch_size=args['batch_size'],
-                                     shuffle=False,
-                                     num_workers=8,
-                                     collate_fn=collate_fn)
-        self.test_loader = DataLoader(dataset=test_set,
-                                      batch_size=args['batch_size'],
-                                      shuffle=False,
-                                      num_workers=8,
-                                      collate_fn=collate_fn)
+        if is_train:
+            train_set = ABAWDataset(0, **args)
+            val_set = ABAWDataset(1, **args)
+            self.train_loader = DataLoader(dataset=train_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=True,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
+            self.val_loader = DataLoader(dataset=val_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=False,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
+        else:
+            test_set = ABAWDataset(2, **args)
+            self.test_loader = DataLoader(dataset=test_set,
+                                        batch_size=args['batch_size'],
+                                        shuffle=False,
+                                        num_workers=num_workers,
+                                        collate_fn=collate_fn)
 
     def train_dataloader(self):
         return self.train_loader
@@ -175,10 +256,15 @@ class ABAWDataModule(pl.LightningDataModule):
 
 if __name__ == '__main__':
   
-    dataset = ABAWDataModule(data_dir="./dataset/abaw5",
+    dataset = ABAWDataModuleSnippet(data_dir="./dataset/abaw5",
                              batch_size=2,
                              input_size=224,
-                             snippet_size = 30
+                             snippet_size = 30,
+                             sample_times=5,
+                             num_workers=8,
+                             features='smm',
+                             feat_dir='',
+                             diff_dir=''
                              )
 
     for batch in tqdm(dataset.train_loader):
