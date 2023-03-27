@@ -215,7 +215,7 @@ class ERI(LightningModule):
 
             # x = x.permute(0, 2, 1)
             # x = self.conv_module(x)
-            # attn = self.elem_atten(x)
+            # attn = self.elem_atte(x)
             # # x = torch.sum(x * attn, dim=-1)
             # x = x.permute(0, 2, 1)
             # # print(x.shape)
