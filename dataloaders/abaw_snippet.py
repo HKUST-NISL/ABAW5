@@ -38,11 +38,9 @@ class Collator(object):
         batch_y torch.tensor: bs, 7;
         '''
         batch_x = {}
-        if not self.flag:
-            batch_x['images'] = torch.stack([x['images'] for x in data])
-            batch_x['mask'] = torch.stack([x['mask'] for x in data])
-        else:
-            batch_x['images'] = [x['images'] for x in data]
+
+        batch_x['images'] = [x['images'] for x in data]
+        batch_x['audio'] = [x['audio'] for x in data]
         batch_x['age'] = torch.stack([x['age'] for x in data])
         batch_x['country'] = torch.stack([x['country'] for x in data])
         # batch_x['age_con'] = torch.stack([x['age_con'] for x in data])
@@ -81,6 +79,7 @@ class ABAWDataset(Dataset):
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
         self.features = args['features']
+        self.audio_features = args['audio_features']
         self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
         # self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
@@ -92,47 +91,72 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (self.set_dir))
 
-        num_path = './dataset/%s_num.csv' % self.set_dir
-        vids = []
-        snums = []
-        nums = []
-        labels = []
-        for file_id in tqdm(df_data['File_ID'].values):
-        # for file_id in df_data['File_ID'].values[:100]:
-            # file_id = os.path.basename(data_file)
-            # loc = df['File_ID'] == '['+file_id+']'
+        pickle_path = os.path.join(self.data_dir, self.set_type + '_data.pkl')
+        if os.path.exists(pickle_path):
 
-            file_name = file_id.replace('[', '').replace(']', '')
-            loc = df['File_ID'] == file_id
-            info = df[loc]
-            if info.empty: continue
-            # assert info.iat[0, 1].lower() == indexList[trainIndex]
-            data_entry = {}
-            intensity = info.iloc[0, 2:9].tolist()
-            age = info.iloc[0, 9]
-            country = info.iloc[0, 10]
-            assert country == 'United States' or 'South Africa'
+            with open(pickle_path, 'rb') as handle:
+                data = pickle.load(handle)
 
-            # data_entry['videoPath'] = data_file
-            data_entry['intensity'] = np.array(intensity)
+            self.vid_list = data['vid_list']
+            self.video_dict = data['video_dict']
 
-            feat_path = os.path.join(self.feat_dir , 'features', self.features, self.set_dir, file_name+'.npy')
+        else:
 
-            data_entry['feat_path'] = feat_path
-            data_entry['age'] = np.array(age)
-            data_entry['country'] = np.array(0 if country == 'United States' else 1)
+            num_path = './dataset/%s_num.csv' % self.set_dir
+            vids = []
+            snums = []
+            labels = []
+            for file_id in tqdm(df_data['File_ID'].values):
+            # for file_id in df_data['File_ID'].values[:100]:
+                # file_id = os.path.basename(data_file)
+                # loc = df['File_ID'] == '['+file_id+']'
 
-            self.video_dict[file_name] = data_entry
-            self.vid_list.append(file_name)
+                file_name = file_id.replace('[', '').replace(']', '')
+                loc = df['File_ID'] == file_id
+                info = df[loc]
+                if info.empty: continue
+                # assert info.iat[0, 1].lower() == indexList[trainIndex]
+                data_entry = {}
+                intensity = info.iloc[0, 2:9].tolist()
+                age = info.iloc[0, 9]
+                country = info.iloc[0, 10]
+                assert country == 'United States' or 'South Africa'
 
-            labels.append(data_entry['intensity'].reshape((1, -1)))
+                # data_entry['videoPath'] = data_file
+                data_entry['intensity'] = np.array(intensity)
 
-        data = {}
-        data['vid_list'] = self.vid_list
-        data['video_dict'] = self.video_dict
+                feat_path = os.path.join(self.feat_dir , 'features', self.features, self.set_dir, file_name+'.npy')
+                audio_feat_path = os.path.join(self.feat_dir , 'features', self.audio_features, self.set_dir, file_name+'.npy')
 
-        df = pd.DataFrame(snums, columns=['numbers'], index=vids)
-        df.to_csv(num_path)
+                data_entry['feat_path'] = feat_path
+                data_entry['audio_feat_path'] = audio_feat_path
+                data_entry['age'] = np.array(age)
+                data_entry['country'] = np.array(0 if country == 'United States' else 1)
+
+                au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                                    'aligned', file_name, file_name+'.csv')
+                au_info = pd.read_csv(au_info_path).values
+                au_info = au_info[:, 679:].copy()
+                au_info_r = au_info[:, :17]
+                au_info_c = au_info[:, 17:]
+
+                data_entry['au_c'] = au_info_c
+                data_entry['au_r'] = au_info_r
+
+                self.video_dict[file_name] = data_entry
+                self.vid_list.append(file_name)
+
+                labels.append(data_entry['intensity'].reshape((1, -1)))
+
+            data = {}
+            data['vid_list'] = self.vid_list
+            data['video_dict'] = self.video_dict
+
+            with open(pickle_path, 'wb') as handle:
+                pickle.dump(data, handle)
+
+            df = pd.DataFrame(snums, columns=['numbers'], index=vids)
+            df.to_csv(num_path)
 
         self.args = args
 
@@ -147,26 +171,23 @@ class ABAWDataset(Dataset):
         data = {}
         vid_name = self.vid_list[index]
         feat_path = self.video_dict[vid_name]['feat_path']
+        audio_feat_path = self.video_dict[vid_name]['audio_feat_path']
+
         video_entry = self.video_dict[vid_name]
 
         feat_array = np.load(feat_path)
+        aud_array = np.load(audio_feat_path)
 
         data['images'] = torch.from_numpy(feat_array).float()
+        data['audio'] = torch.from_numpy(aud_array).float()
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 
-        au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-                                            'aligned', vid_name, vid_name+'.csv')
-        au_info = pd.read_csv(au_info_path).values
-        au_info = au_info[:, 679:]
-        au_info_r = au_info[:, :17]
-        au_info_c = au_info[:, 17:]
-
-        data['au_c'] = torch.from_numpy(au_info_c).float()
-        data['au_r'] = torch.from_numpy(au_info_r).float()
+        data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
+        data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
 
         return data
 
@@ -184,27 +205,28 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         is_train = (args['train'] == 'True')
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
+
+        train_set = ABAWDataset(0, **args)
+        val_set = ABAWDataset(1, **args)
+        test_set = ABAWDataset(2, **args)
         
-        if is_train:
-            train_set = ABAWDataset(0, **args)
-            val_set = ABAWDataset(1, **args)
-            self.train_loader = DataLoader(dataset=train_set,
-                                        batch_size=args['batch_size'],
-                                        shuffle=True,
-                                        num_workers=num_workers,
-                                        collate_fn=collate_fn)
-            self.val_loader = DataLoader(dataset=val_set,
-                                        batch_size=args['batch_size'],
-                                        shuffle=False,
-                                        num_workers=num_workers,
-                                        collate_fn=collate_fn)
-        else:
-            test_set = ABAWDataset(2, **args)
-            self.test_loader = DataLoader(dataset=test_set,
-                                        batch_size=args['batch_size'],
-                                        shuffle=False,
-                                        num_workers=num_workers,
-                                        collate_fn=collate_fn)
+
+        self.train_loader = DataLoader(dataset=train_set,
+                                    batch_size=args['batch_size'],
+                                    shuffle=True,
+                                    num_workers=num_workers,
+                                    collate_fn=collate_fn)
+        self.val_loader = DataLoader(dataset=val_set,
+                                    batch_size=args['batch_size'],
+                                    shuffle=False,
+                                    num_workers=num_workers,
+                                    collate_fn=collate_fn)
+
+        self.test_loader = DataLoader(dataset=test_set,
+                                    batch_size=args['batch_size'],
+                                    shuffle=False,
+                                    num_workers=num_workers,
+                                    collate_fn=collate_fn)
 
     def train_dataloader(self):
         return self.train_loader
@@ -219,12 +241,14 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
 if __name__ == '__main__':
   
     dataset = ABAWDataModuleSnippet(data_dir="./dataset/abaw5",
-                             batch_size=2,
+                             batch_size=32,
                              input_size=224,
-                             snippet_size = 30,
-                             sample_times=5,
+                             snippet_size = 0,
+                             sample_times=1,
                              num_workers=8,
-                             features='smm',
+                             features='res18_aff',
+                             audio_features='mfcc',
+                             train='True',
                              feat_dir='',
                              diff_dir=''
                              )

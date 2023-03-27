@@ -99,9 +99,19 @@ class ERI(LightningModule):
 
         self.transformer = Transformer(hidden_ch, self.n_layers, self.n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
 
+
+        self.rnn_aud = nn.GRU(40, hidden_ch, 2, batch_first=True)
+        self.reg_token_aud = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
+
+        n_head = 4
+        n_layers = 4
+        d_feed = 256
+        self.transformer_aud = Transformer(hidden_ch, n_layers, n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
+
+
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
-            nn.Linear(hidden_ch, 256, bias=False),
+            nn.Linear(hidden_ch * 2, 256, bias=False),
             # nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
@@ -172,6 +182,7 @@ class ERI(LightningModule):
         input = data['images']
         AU = data['au_r']
         AUC = data['au_c']
+        audio = data['audio']
 
         feats = []
         for i in range(len(input)):
@@ -194,7 +205,28 @@ class ERI(LightningModule):
 
 
         feats = torch.cat(feats, dim = 0)
-        # preds = torch.sigmoid(self.head(feats))
+
+        audio_feats = []
+        for i in range(len(input)):
+            x = audio[i].to(self.device)
+            x = x.permute(1, 0)
+
+            n, c = x.shape
+            x = x.reshape(1, n, -1)
+
+            x, ho = self.rnn_aud(x)
+ 
+            reg_token = self.reg_token_aud
+            x_t = torch.cat([reg_token, x], dim=1)
+            x_t = self.transformer_aud(x_t)
+            x = x_t[:, 0]
+            
+            audio_feats.append(x)
+
+
+        audio_feats = torch.cat(audio_feats, dim = 0)
+    
+        feats = torch.cat([feats, audio_feats], dim=1)
         preds = self.head(feats)
 
         return preds
