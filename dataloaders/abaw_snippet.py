@@ -92,80 +92,47 @@ class ABAWDataset(Dataset):
         self.vid_list = []
         print('Initializing %s' % (self.set_dir))
 
-        pickle_path = os.path.join(self.data_dir, self.set_type + '_data.pkl')
-        if os.path.exists(pickle_path):
+        num_path = './dataset/%s_num.csv' % self.set_dir
+        vids = []
+        snums = []
+        nums = []
+        labels = []
+        for file_id in tqdm(df_data['File_ID'].values):
+        # for file_id in df_data['File_ID'].values[:100]:
+            # file_id = os.path.basename(data_file)
+            # loc = df['File_ID'] == '['+file_id+']'
 
-            with open(pickle_path, 'rb') as handle:
-                data = pickle.load(handle)
+            file_name = file_id.replace('[', '').replace(']', '')
+            loc = df['File_ID'] == file_id
+            info = df[loc]
+            if info.empty: continue
+            # assert info.iat[0, 1].lower() == indexList[trainIndex]
+            data_entry = {}
+            intensity = info.iloc[0, 2:9].tolist()
+            age = info.iloc[0, 9]
+            country = info.iloc[0, 10]
+            assert country == 'United States' or 'South Africa'
 
-            self.all_image_lists = data['all_image_lists']
-            self.vid_list = data['vid_list']
-            self.video_dict = data['video_dict']
+            # data_entry['videoPath'] = data_file
+            data_entry['intensity'] = np.array(intensity)
 
-        else:
-            num_path = './dataset/%s_num.csv' % self.set_dir
-            vids = []
-            snums = []
-            nums = []
-            labels = []
-            for file_id in tqdm(df_data['File_ID'].values):
-            # for file_id in df_data['File_ID'].values[:100]:
-                # file_id = os.path.basename(data_file)
-                # loc = df['File_ID'] == '['+file_id+']'
+            feat_path = os.path.join(self.feat_dir , 'features', self.features, self.set_dir, file_name+'.npy')
 
-                file_name = file_id.replace('[', '').replace(']', '')
-                loc = df['File_ID'] == file_id
-                info = df[loc]
-                if info.empty: continue
-                # assert info.iat[0, 1].lower() == indexList[trainIndex]
-                data_entry = {}
-                intensity = info.iloc[0, 2:9].tolist()
-                age = info.iloc[0, 9]
-                country = info.iloc[0, 10]
-                assert country == 'United States' or 'South Africa'
+            data_entry['feat_path'] = feat_path
+            data_entry['age'] = np.array(age)
+            data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
-                # data_entry['videoPath'] = data_file
-                data_entry['intensity'] = np.array(intensity)
+            self.video_dict[file_name] = data_entry
+            self.vid_list.append(file_name)
 
-                feature_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, file_name)
-                image_paths = sorted(glob.glob(os.path.join(feature_path, '*.npy')))
+            labels.append(data_entry['intensity'].reshape((1, -1)))
 
-                data_entry['image_paths'] = image_paths
-                data_entry['age'] = np.array(age)
-                data_entry['country'] = np.array(0 if country == 'United States' else 1)
+        data = {}
+        data['vid_list'] = self.vid_list
+        data['video_dict'] = self.video_dict
 
-                au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
-                                            'aligned', file_name, file_name+'.csv')
-                au_info = pd.read_csv(au_info_path).values
-                au_info = au_info[:, 679:]
-                au_info_r = au_info[:, :17]
-                au_info_c = au_info[:, 17:]
-                data_entry['au_r'] = au_info_r
-                data_entry['au_c'] = au_info_c
-
-                self.video_dict[file_name] = data_entry
-                self.vid_list.append(file_name)
-
-                for img_path in image_paths:
-                    this_image = {
-                        'path': img_path,
-                        'vid': file_name,
-                    }
-                    self.all_image_lists.append(this_image)
-
-                nums.append(len(image_paths))
-                labels.append(data_entry['intensity'].reshape((1, -1)))
-
-            data = {}
-            data['all_image_lists'] = self.all_image_lists
-            data['vid_list'] = self.vid_list
-            data['video_dict'] = self.video_dict
-
-            with open(pickle_path, 'wb') as handle:
-                pickle.dump(data, handle)
-
-            df = pd.DataFrame(snums, columns=['numbers'], index=vids)
-            df.to_csv(num_path)
+        df = pd.DataFrame(snums, columns=['numbers'], index=vids)
+        df.to_csv(num_path)
 
         self.args = args
 
@@ -174,37 +141,32 @@ class ABAWDataset(Dataset):
             # self.vid_list = self.vid_list * self.sample_times
         self.data_total_length = len(self.vid_list)
 
-        print('%s: videos: %d images: %d times: %d' % (
-            indexList[trainIndex], len(self.vid_list)//self.sample_times, 
-            len(self.all_image_lists), self.sample_times))
+        print('%s: videos: %d' % (indexList[trainIndex], len(self.vid_list)))
 
     def __getitem__(self, index):
         data = {}
         vid_name = self.vid_list[index]
-        image_paths = self.video_dict[vid_name]['image_paths']
+        feat_path = self.video_dict[vid_name]['feat_path']
         video_entry = self.video_dict[vid_name]
-        sel_paths = image_paths
 
-        inputs = []
-        for path in sel_paths:
-            img_name = os.path.basename(path)[:-4]
-            if self.features == 'image':
-                input = self.transform(Image.open(path)).unsqueeze(0)
-            else:
-                feat_path = os.path.join(self.feat_dir , self.features+'_features', self.set_dir, vid_name, img_name+'.npy')
-                input = torch.from_numpy(np.load(feat_path)).unsqueeze(0)
-            inputs.append(input)
+        feat_array = np.load(feat_path)
 
-
-        data['images'] = torch.cat(inputs, 0)
+        data['images'] = torch.from_numpy(feat_array).float()
         data['vid'] = vid_name
         intensity = torch.from_numpy(video_entry['intensity']).float()
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
 
-        data['au_c'] = torch.from_numpy(video_entry['au_c']).float()
-        data['au_r'] = torch.from_numpy(video_entry['au_r']).float()
+        au_info_path = os.path.join(self.data_dir, 'openface_align', self.set_dir, 
+                                            'aligned', vid_name, vid_name+'.csv')
+        au_info = pd.read_csv(au_info_path).values
+        au_info = au_info[:, 679:]
+        au_info_r = au_info[:, :17]
+        au_info_c = au_info[:, 17:]
+
+        data['au_c'] = torch.from_numpy(au_info_c).float()
+        data['au_r'] = torch.from_numpy(au_info_r).float()
 
         return data
 
@@ -222,7 +184,7 @@ class ABAWDataModuleSnippet(pl.LightningDataModule):
         is_train = (args['train'] == 'True')
         flag = args['snippet_size'] == 0
         collate_fn = Collator(flag)
-
+        
         if is_train:
             train_set = ABAWDataset(0, **args)
             val_set = ABAWDataset(1, **args)

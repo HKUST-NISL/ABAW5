@@ -13,16 +13,7 @@ from torch.utils.data import DataLoader, random_split
 from torchmetrics import Accuracy
 from torchvision import transforms
 import models
-
-from einops import rearrange, repeat
-
-
-def sinusoidal_embedding(n_channels, dim):
-    pe = torch.FloatTensor([[p / (10000 ** (2 * (i // 2) / dim)) for i in range(dim)]
-                            for p in range(n_channels)])
-    pe[:, 0::2] = torch.sin(pe[:, 0::2])
-    pe[:, 1::2] = torch.cos(pe[:, 1::2])
-    return rearrange(pe, '... -> 1 ...')
+from models.trans import Transformer, sinusoidal_embedding
 
 
 class ERI(LightningModule):
@@ -86,21 +77,10 @@ class ERI(LightningModule):
 
         
         hidden_ch = 256
-
-        # self.proj = nn.Linear(feat_ch, 17 * 16, bias=False)
         feat_ch += 18 + 17
 
-        self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
-        # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
-        # self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
+        self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=True)
 
-        # hidden_ch += hidden_ch//2
-
-        # self.elem_atten = nn.Sequential(
-        #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
-        #     nn.Softmax(dim=-1),
-        # )
-        
         self.tokens = 1
         # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
         # self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
@@ -114,8 +94,10 @@ class ERI(LightningModule):
         # self.n_layers = 6
         # d_feed = 2048
 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=d_feed, nhead=self.n_head, dropout=0.2)
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
+        # encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=d_feed, nhead=self.n_head, dropout=0.2)
+        # self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
+
+        self.transformer = Transformer(hidden_ch, self.n_layers, self.n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
 
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
@@ -172,11 +154,7 @@ class ERI(LightningModule):
         mask = data['mask'].to(self.device)
         mask = torch.cat([mask] * self.n_head, dim=0)
 
-        if self.features == 'image':
-            b, n, c, h, w = x.shape
-            x = self.model(x.view(b*n, c, h, w)).view(b, n, -1)
-        else:
-            b, n, c = x.shape
+        b, n, c = x.shape
 
         reg_token = torch.tile(self.reg_token, (b, 1, 1))
         x = torch.cat([reg_token, x], dim=1)
@@ -201,51 +179,17 @@ class ERI(LightningModule):
             au = AU[i].to(self.device)
             auc = AUC[i].to(self.device)
 
-            # print(x.shape, au.shape)
             x = torch.cat([x, au, auc], dim=1)
             n, c = x.shape
-            # print(x.shape, self.proj(x).shape, au.shape)
-            # x_proj = torch.sum(self.proj(x).reshape(n, 17, 16) * au.reshape(n, 17, 1), dim=1)
-            # x = torch.cat([x, x_proj, au], dim=1)
-
-            # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
-            # xlmk = xlmk.reshape(1, n, -1)
 
-
-            # x = x.permute(0, 2, 1)
-            # x = self.conv_module(x)
-            # attn = self.elem_atte(x)
-            # # x = torch.sum(x * attn, dim=-1)
-            # x = x.permute(0, 2, 1)
-            # # print(x.shape)
-
-            x, ho = self.rnn(x.permute(1, 0, 2))
-            x = x.permute(1, 0, 2)
-
-            # xlmk, ho = self.rnn_lmk(xlmk.permute(1, 0, 2))
-            # xlmk = xlmk.permute(1, 0, 2)
-            # x = torch.cat([x, xlmk], dim=-1)
-
-            # x = x - torch.mean(x, dim=1, keepdim=True)
-
-            # x = x.permute(0, 2, 1)
-            # # x = self.conv_module(x)
-            # attn = self.elem_atten(x).permute(0, 2, 1)
-            # x = x.permute(0, 2, 1)
-
+            x, ho = self.rnn(x)
+ 
             reg_token = self.reg_token
             x_t = torch.cat([reg_token, x], dim=1)
-            # x_t = x_t.reshape(1, n+1, -1) + self.pos_embedding[:, :n+1].to(x.device)
-            x_t = self.transformer(x_t.permute(1, 0, 2)).permute(1, 0, 2)
-
-            x_t1 = x_t[:, 0]
-            # x_t2 = torch.sum(x_t[:, 1:], dim=1)
-            # x = torch.cat([x_t1[:, i] for i in range(self.tokens)], dim=-1)
-            x = x_t1
+            x_t = self.transformer(x_t)
+            x = x_t[:, 0]
             
-            # # x_r, ho = self.rnn(x.permute(1, 0, 2))
-            # x = torch.cat([x_t1, x_t2], dim=-1)
             feats.append(x)
 
 
