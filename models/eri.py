@@ -116,7 +116,7 @@ class ERI(LightningModule):
         self.head = nn.Sequential(
             nn.Linear(hidden_ch, 256, bias=False),
             # nn.ReLU(),
-            nn.Dropout(0.2),
+            nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
         )
 
@@ -363,7 +363,7 @@ class ERI(LightningModule):
     def test_epoch_end(self, test_step_outputs):
         ind_col = 'File_ID'
 
-        df_info = pd.read_csv('dataset/abaw5/data_info.csv', index_col=0)
+        df_info = pd.read_csv('/data/abaw5/data_info.csv', index_col=0)
 
         df_gt = df_info[df_info['Split'] == 'Test']
         df_gt = df_gt[self.exp_names].sort_index()
