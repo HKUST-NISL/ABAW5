@@ -87,6 +87,7 @@ class ERI(LightningModule):
         # feat_ch += 68*2
         feat_ch = 512
         feat_ch += (17+18)
+        feat_ch += 768
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
         # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
@@ -201,52 +202,23 @@ class ERI(LightningModule):
             x = input[i].to(self.device)
             au1 = AU1[i].to(self.device)
             au2 = AU2[i].to(self.device)
-            audio_entry = audio[i].to(self.device)
-            print(audio_entry.size())
-            x = torch.cat((x, au1, au2), dim=1)
+            audio_entry = audio[i].to(self.device) #733, 768
+            x = torch.cat((x, au1, au2, audio_entry), dim=1)
             if self.features == 'image':
                 n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
             else:
                 n, c = x.shape
 
-            # x = torch.cat([x, xlmk], dim=-1)
             x = x.reshape(1, n, -1)
-            # xlmk = xlmk.reshape(1, n, -1)
-
-            # x = x.permute(0, 2, 1)
-            # x = self.conv_module(x)
-            # attn = self.elem_atten(x)
-            # # x = torch.sum(x * attn, dim=-1)
-            # x = x.permute(0, 2, 1)
-            # # print(x.shape)
-
             x, ho = self.rnn(x.permute(1, 0, 2))
             x = x.permute(1, 0, 2)
-
-            # xlmk, ho = self.rnn_lmk(xlmk.permute(1, 0, 2))
-            # xlmk = xlmk.permute(1, 0, 2)
-            # x = torch.cat([x, xlmk], dim=-1)
-
-            # x = x - torch.mean(x, dim=1, keepdim=True)
-
-            # x = x.permute(0, 2, 1)
-            # # x = self.conv_module(x)
-            # attn = self.elem_atten(x).permute(0, 2, 1)
-            # x = x.permute(0, 2, 1)
-
             reg_token = self.reg_token
             x_t = torch.cat([reg_token, x], dim=1)
-            # x_t = x_t.reshape(1, n+1, -1) + self.pos_embedding[:, :n+1].to(x.device)
             x_t = self.transformer(x_t.permute(1, 0, 2)).permute(1, 0, 2)
 
             x_t1 = x_t[:, 0]
-            # x_t2 = torch.sum(x_t[:, 1:], dim=1)
-            # x = torch.cat([x_t1[:, i] for i in range(self.tokens)], dim=-1)
             x = x_t1
-            
-            # # x_r, ho = self.rnn(x.permute(1, 0, 2))
-            # x = torch.cat([x_t1, x_t2], dim=-1)
             feats.append(x)
 
 
