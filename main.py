@@ -101,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('--snippet_size', default=0, type=int)
     parser.add_argument('--sample_times', default=1, type=int)
     parser.add_argument('--features', default='features/', type=str) # image, smm, res50
+    parser.add_argument('--audio_features', default='wav2vec_feature/', type=str)
     parser.add_argument('--aligned', default='aligned/', type=str)
     parser.add_argument('--feat_dir', default='', type=str)
     parser.add_argument('--sampling_strategy', default=0, type=int)

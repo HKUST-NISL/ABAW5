@@ -192,14 +192,17 @@ class ERI(LightningModule):
         #age_con = data['age_con'].to(self.device)
         AU1 = data['au_r']
         AU2 = data['au_c']
-        gaze=data['gaze'] #size:8
-        pose=data['pose'] #size:3
+        audio = data['audio']
+        #gaze=data['gaze'] #size:8
+        #pose=data['pose'] #size:3
 
         feats = []
         for i in range(len(input)):
             x = input[i].to(self.device)
             au1 = AU1[i].to(self.device)
             au2 = AU2[i].to(self.device)
+            audio_entry = audio[i].to(self.device)
+            print(audio_entry.size())
             x = torch.cat((x, au1, au2), dim=1)
             if self.features == 'image':
                 n, c, h, w = x.shape

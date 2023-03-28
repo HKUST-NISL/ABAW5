@@ -48,8 +48,9 @@ class Collator(object):
         batch_x['vid'] = [x['vid'] for x in data]
         batch_x['au_c'] = [x['au_c'] for x in data]
         batch_x['au_r'] = [x['au_r'] for x in data]
-        batch_x['gaze'] = [x['gaze'] for x in data]
-        batch_x['pose'] = [x['pose'] for x in data]
+        batch_x['audio'] = [x['audio'] for x in data]
+        #batch_x['gaze'] = [x['gaze'] for x in data]
+        #batch_x['pose'] = [x['pose'] for x in data]
         # batch_x['intensity'] = np.stack([x['intensity'] for x in data])
         batch_y = torch.stack([x['intensity'] for x in data])
 
@@ -82,6 +83,9 @@ class ABAWDataset(Dataset):
         self.input_size = args['input_size']
         self.sample_times = args['sample_times']
         self.features_path = os.path.join(dataset_folder_path, args['features'], self.set_dir)
+        self.audio_features_path = os.path.join(dataset_folder_path, args['audio_features'], self.set_dir)
+        print('visual feature path: ', self.features_path)
+        print('audio feature path: ', self.audio_features_path)
         #self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
         # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
         #self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
@@ -122,6 +126,7 @@ class ABAWDataset(Dataset):
             data_entry['country'] = np.array(0 if country == 'United States' else 1)
 
             data_entry['au_csv'] = self.align_path + '/' + file_name + '/' + file_name + '.csv'
+            data_entry['audio'] = self.audio_features_path + '/' + file_name + '.npy'
 
             self.video_dict[file_name] = data_entry
             self.vid_list.append(file_name)
@@ -184,22 +189,24 @@ class ABAWDataset(Dataset):
         data['intensity'] = intensity
         data['age'] = torch.from_numpy(video_entry['age'])
         data['country'] = torch.from_numpy(video_entry['country'])
+        audio = np.load(video_entry['audio'])
+        data['audio'] = torch.from_numpy(audio).float()
 
         info = pd.read_csv(video_entry['au_csv']).values
         au_info = info[:, 679:]
         au_info_r = au_info[:, :17]
         au_info_c = au_info[:, 17:]
-        gaze = info[:, 5:13]
-        pose = info[:, 296:299]
+        #gaze = info[:, 5:13]
+        #pose = info[:, 296:299]
         data['au_r'] = au_info_r
         data['au_c'] = au_info_c
-        data['gaze'] = gaze #size: 8
-        data['pose'] = pose #size: 3
+        #data['gaze'] = gaze #size: 8
+        #data['pose'] = pose #size: 3
 
         data['au_c'] = torch.from_numpy(data['au_c']).float()
         data['au_r'] = torch.from_numpy(data['au_r']).float()
-        data['gaze'] = torch.from_numpy(data['gaze']).float()
-        data['pose'] = torch.from_numpy(data['pose']).float()
+        #data['gaze'] = torch.from_numpy(data['gaze']).float()
+        #data['pose'] = torch.from_numpy(data['pose']).float()
 
         '''age = int(video_entry['age']) - 15
         if age > 34: age = 49
