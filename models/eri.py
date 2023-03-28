@@ -210,8 +210,8 @@ class ERI(LightningModule):
             x_t1 = x_t[:, 0]
             x = x_t1
 
-            n2, c2 = audio.shape
-            audio_x = audio_x.reshape(1, n2, -1)
+            n2, c2 = audio_entry.shape
+            audio_x = audio_entry.reshape(1, n2, -1)
             audio_x, _ = self.rnn2(audio_x.permute(1, 0, 2))
             audio_x = audio_x.permute(1, 0, 2)
             reg_token2 = self.reg_token2
@@ -219,8 +219,7 @@ class ERI(LightningModule):
             audio_t = self.transformer(audio_t.permute(1, 0, 2)).permute(1, 0, 2)
             audio_t1 = audio_t[:, 0]
             x2 = audio_t1
-            x = torch.cat((x, x2))
-
+            x = torch.cat((x, x2), dim=1)
             feats.append(x)
 
 
