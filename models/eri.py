@@ -87,25 +87,10 @@ class ERI(LightningModule):
         # feat_ch += 68*2
         feat_ch = 512
         feat_ch += (17+18)
-        feat_ch += 768
+        #feat_ch += 768
         hidden_ch = 256
         self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=False)
-        # self.rnn_lmk = nn.GRU(68*2, hidden_ch//2, 2, batch_first=False)
-        # self.rnn = nn.LSTM(feat_ch, hidden_ch, 2, batch_first=False)
-
-        # hidden_ch += hidden_ch//2
-
-        # self.elem_atten = nn.Sequential(
-        #     nn.Conv1d(hidden_ch, 1, kernel_size=1, stride=1, padding=0),
-        #     nn.Softmax(dim=-1),
-        # )
-        '''self.all_params = []
-        for name, param in self.named_parameters():
-            self.all_params.append(param)'''
-        
         self.tokens = 1
-        # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
-        # self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
         self.reg_token = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
         self.n_head = 4
@@ -113,20 +98,25 @@ class ERI(LightningModule):
         encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=256, nhead=self.n_head, dropout=0.2)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
 
+        feat_ch2 = 768
+        hidden_ch2 = 256
+        self.rnn2 = nn.GRU(feat_ch2, hidden_ch2, 2, batch_first=False)
+        self.tokens2 = 1
+        self.reg_token2 = nn.Parameter(torch.randn(1, self.tokens2, hidden_ch2))
+
+        self.n_head2 = 4
+        self.n_layers2 = 4
+        encoder_layer2 = nn.TransformerEncoderLayer(d_model=hidden_ch2, dim_feedforward=256, nhead=self.n_head2,
+                                                   dropout=0.2)
+        self.transformer2 = nn.TransformerEncoder(encoder_layer2, num_layers=self.n_layers2)
+
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
-            nn.Linear(hidden_ch, 256, bias=False),
+            nn.Linear(hidden_ch+hidden_ch2, 256, bias=False),
             # nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
         )
-
-        # self.heads = nn.ModuleList([nn.Sequential(
-        #     nn.Linear(hidden_ch, hidden_ch, bias=False),
-        #     nn.LayerNorm(hidden_ch),
-        #     nn.Dropout(0.2),
-        #     nn.Linear(hidden_ch, 1, bias=False),
-        # ) for i in range(self.tokens)])
 
         self.test_vids = []
         self.exp_names = ['Adoration', 'Amusement', 'Anxiety', 'Disgust', 'Empathic-Pain', 'Fear', 'Surprise']
@@ -203,7 +193,7 @@ class ERI(LightningModule):
             au1 = AU1[i].to(self.device)
             au2 = AU2[i].to(self.device)
             audio_entry = audio[i].to(self.device) #733, 768
-            x = torch.cat((x, au1, au2, audio_entry), dim=1)
+            x = torch.cat((x, au1, au2), dim=1)
             if self.features == 'image':
                 n, c, h, w = x.shape
                 x = self.model(x.view(n, c, h, w)).view(n, -1)
@@ -219,6 +209,18 @@ class ERI(LightningModule):
 
             x_t1 = x_t[:, 0]
             x = x_t1
+
+            n2, c2 = audio.shape
+            audio_x = audio_x.reshape(1, n2, -1)
+            audio_x, _ = self.rnn2(audio_x.permute(1, 0, 2))
+            audio_x = audio_x.permute(1, 0, 2)
+            reg_token2 = self.reg_token2
+            audio_t = torch.cat([reg_token2, audio_x], dim=1)
+            audio_t = self.transformer(audio_t.permute(1, 0, 2)).permute(1, 0, 2)
+            audio_t1 = audio_t[:, 0]
+            x2 = audio_t1
+            x = torch.cat((x, x2))
+
             feats.append(x)
 
 
