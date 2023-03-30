@@ -80,7 +80,7 @@ class ABAWDataset(Dataset):
         self.sample_times = args['sample_times']
         self.features = args['features']
         self.audio_features = args['audio_features']
-        self.feat_dir = self.data_dir if args['feat_dir']=='' else args['feat_dir']
+        self.feat_dir = self.data_dir
         # self.diff_dir = 'abaw5_diffs0' if args['diff_dir']=='' else args['diff_dir']
         # self.diff_dir = 'pipnet_diffs' if args['diff_dir']=='' else args['diff_dir']
         self.diff_dir = 'abaw5_diffs_rm' if args['diff_dir']=='' else args['diff_dir']

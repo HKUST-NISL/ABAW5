@@ -31,98 +31,56 @@ class ERI(LightningModule):
         self.epochs = args['num_epochs']
         self.features = args['features']
         self.loss_type = args['loss']
+        self.mode = args['mode']
 
 
         self.pretrained_path = args['pretrained']
 
-        if self.features =='image':
-            self.model = getattr(models, args['model_name'])()
-
-            if len(self.pretrained_path) > 1:
-                if '.pkl' in self.pretrained_path:
-                    import pickle
-                    with open(self.pretrained_path, 'rb') as f:
-                        obj = f.read()
-                    ckpt = {key: torch.from_numpy(arr) for key, arr in pickle.loads(obj, encoding='latin1').items()}
-                else:
-                    ckpt = torch.load(self.pretrained_path)
-                    if 'state_dict' in ckpt.keys():
-                        ckpt = ckpt['state_dict']
-                    # ckpt = torch.load(self.pretrained_path)['state_dict']
-
-                self.model.load_state_dict(ckpt, strict=False)
-
-            feat_ch = self.model.out_c
-        elif 'smm' in self.features:
-            # self.model = torch.nn.Identity()
-            feat_ch = 272
-        elif 'effnetb0' in self.features:
-            # self.model = torch.nn.Identity()
-            feat_ch = 1280
-        elif 'res18' in self.features:
-            # self.model = torch.nn.Identity()
-            feat_ch = 512
-        elif 'resnet50' in self.features:
-            # self.model = torch.nn.Identity()
-            feat_ch = 2048
-
-        
-        # self.conv_module = nn.Sequential(
-        #     nn.Conv1d(feat_ch, hidden_ch, kernel_size=5, stride=1, padding=2, bias=False),
-        #     nn.Conv1d(hidden_ch, hidden_ch, kernel_size=5, stride=1, padding=2, bias=False),
-        #     nn.Conv1d(hidden_ch, hidden_ch, kernel_size=5, stride=1, padding=2, bias=False),
-        #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
-        #     # nn.Conv1d(hidden_ch, hidden_ch, kernel_size=3, stride=1, padding=1, bias=False),
-        # )
-
-        
         hidden_ch = 256
-        feat_ch += 18 + 17
-
-        self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=True)
-
         self.tokens = 1
-        # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
-        # self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
-        self.reg_token = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
-        self.n_head = 4
-        self.n_layers = 4
-        d_feed = 256
+        dense_feat_ch = 0
+        if self.mode == 'vamm' or self.mode == 'video':
 
-        # self.n_head = 8
-        # self.n_layers = 6
-        # d_feed = 2048
+            if 'res18' in self.features:
+                feat_ch = 512
+            elif 'resnet50' in self.features:
+                feat_ch = 2048
 
-        # encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_ch, dim_feedforward=d_feed, nhead=self.n_head, dropout=0.2)
-        # self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=self.n_layers)
+            # with au
+            feat_ch += 18 + 17
+            self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=True)
 
-        self.transformer = Transformer(hidden_ch, self.n_layers, self.n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
+            # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
+            # self.pos_embedding = sinusoidal_embedding(1000, hidden_ch)
+            self.reg_token = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
+
+            n_head = 4
+            n_layers = 4
+            d_feed = 256
+            self.transformer = Transformer(hidden_ch, n_layers, n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
+
+            dense_feat_ch += hidden_ch
 
 
-        self.rnn_aud = nn.GRU(1024, hidden_ch, 2, batch_first=True)
-        self.reg_token_aud = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
+        if self.mode == 'vamm' or self.mode == 'audio':
+            self.rnn_aud = nn.GRU(1024, hidden_ch, 2, batch_first=True)
+            self.reg_token_aud = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
-        n_head = 4
-        n_layers = 4
-        d_feed = 256
-        self.transformer_aud = Transformer(hidden_ch, n_layers, n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
+            n_head = 4
+            n_layers = 4
+            d_feed = 256
+            self.transformer_aud = Transformer(hidden_ch, n_layers, n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
+            dense_feat_ch += hidden_ch
 
 
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
-            nn.Linear(hidden_ch, 256, bias=False),
+            nn.Linear(dense_feat_ch, 256, bias=False),
             # nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
         )
-
-        # self.heads = nn.ModuleList([nn.Sequential(
-        #     nn.Linear(hidden_ch, hidden_ch, bias=False),
-        #     nn.LayerNorm(hidden_ch),
-        #     nn.Dropout(0.2),
-        #     nn.Linear(hidden_ch, 1, bias=False),
-        # ) for i in range(self.tokens)])
 
         self.all_params = []
         for name, param in self.named_parameters():
@@ -157,26 +115,6 @@ class ERI(LightningModule):
             
         return [optimizer], [lr_scheduler]
 
-    def forward_model_mask(self, data):
-        x = data['images'].to(self.device)
-        # age_con = data['age_con'].to(self.device)
-
-        mask = data['mask'].to(self.device)
-        mask = torch.cat([mask] * self.n_head, dim=0)
-
-        b, n, c = x.shape
-
-        reg_token = torch.tile(self.reg_token, (b, 1, 1))
-        x = torch.cat([reg_token, x], dim=1)
-        x = x.reshape(b, n, -1) + self.pos_embedding.tile(b, 1, 1)[:, :n+1].to(x.device)
-
-        x = self.transformer(x.permute(1, 0, 2), mask=mask).permute(1, 0, 2)
-
-        x = x[:, 0]
-        # x = torch.cat([x, age_con], dim=-1)
-        preds = torch.sigmoid(self.head(x))
-
-        return preds
 
     def forward_model_seq(self, data):
         input = data['images']
@@ -184,50 +122,50 @@ class ERI(LightningModule):
         AUC = data['au_c']
         audio = data['audio']
 
-        feats = []
-        for i in range(len(input)):
-            x = input[i].to(self.device)
-            au = AU[i].to(self.device)
-            auc = AUC[i].to(self.device)
+        if self.mode == 'vamm' or self.mode == 'video':
+            feats = []
+            for i in range(len(input)):
+                x = input[i].to(self.device)
+                au = AU[i].to(self.device)
+                auc = AUC[i].to(self.device)
 
-            x = torch.cat([x, au, auc], dim=1)
-            n, c = x.shape
-            x = x.reshape(1, n, -1)
+                x = torch.cat([x, au, auc], dim=1)
+                n, c = x.shape
+                x = x.reshape(1, n, -1)
 
-            x, ho = self.rnn(x)
- 
-            reg_token = self.reg_token
-            x_t = torch.cat([reg_token, x], dim=1)
-            x_t = self.transformer(x_t)
-            x = x_t[:, 0]
-            
-            feats.append(x)
-
-
-        feats = torch.cat(feats, dim = 0)
-
-        audio_feats = []
-        for i in range(len(input)):
-            x = audio[i].to(self.device)
-
-            n, c = x.shape
-            x = x.reshape(1, n, -1)
-
-            x, ho = self.rnn_aud(x)
- 
-            reg_token = self.reg_token_aud
-            x_t = torch.cat([reg_token, x], dim=1)
-            x_t = self.transformer_aud(x_t)
-            x = x_t[:, 0]
-            
-            audio_feats.append(x)
-
-
-        audio_feats = torch.cat(audio_feats, dim = 0)
+                x, ho = self.rnn(x)
     
-        feats = torch.cat([feats, audio_feats], dim=1)
-        preds = self.head(feats)
+                reg_token = self.reg_token
+                x_t = torch.cat([reg_token, x], dim=1)
+                x_t = self.transformer(x_t)
+                x = x_t[:, 0]
+                
+                feats.append(x)
+            feats = torch.cat(feats, dim = 0)
 
+        if self.mode == 'vamm' or self.mode == 'audio':
+            audio_feats = []
+            for i in range(len(input)):
+                x = audio[i].to(self.device)
+
+                n, c = x.shape
+                x = x.reshape(1, n, -1)
+
+                x, ho = self.rnn_aud(x)
+    
+                reg_token = self.reg_token_aud
+                x_t = torch.cat([reg_token, x], dim=1)
+                x_t = self.transformer_aud(x_t)
+                x = x_t[:, 0]
+                
+                audio_feats.append(x)
+            audio_feats = torch.cat(audio_feats, dim = 0)
+
+        if self.mode == 'vamm':
+            feats = torch.cat([feats, audio_feats], dim=1)
+        if self.mode == 'audio':
+            feats = audio_feats
+        preds = self.head(feats)
         return preds
 
     def forward_model_audio(self, data):
@@ -267,8 +205,7 @@ class ERI(LightningModule):
     
     def forward_model(self, data):
         
-        # preds = self.forward_model_seq(data)
-        preds = self.forward_model_audio(data)
+        preds = self.forward_model_seq(data)
 
         return preds
     
