@@ -100,7 +100,7 @@ class ERI(LightningModule):
         self.transformer = Transformer(hidden_ch, self.n_layers, self.n_head, dim_head=64, mlp_dim=d_feed, dropout=0.2)
 
 
-        self.rnn_aud = nn.GRU(40, hidden_ch, 2, batch_first=True)
+        self.rnn_aud = nn.GRU(1024, hidden_ch, 2, batch_first=True)
         self.reg_token_aud = nn.Parameter(torch.randn(1, self.tokens, hidden_ch))
 
         n_head = 4
@@ -111,7 +111,7 @@ class ERI(LightningModule):
 
         # self.head = nn.Linear(feat_ch, 7)
         self.head = nn.Sequential(
-            nn.Linear(hidden_ch * 2, 256, bias=False),
+            nn.Linear(hidden_ch, 256, bias=False),
             # nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(256, 7, bias=False),
@@ -209,7 +209,6 @@ class ERI(LightningModule):
         audio_feats = []
         for i in range(len(input)):
             x = audio[i].to(self.device)
-            x = x.permute(1, 0)
 
             n, c = x.shape
             x = x.reshape(1, n, -1)
@@ -230,13 +229,46 @@ class ERI(LightningModule):
         preds = self.head(feats)
 
         return preds
+
+    def forward_model_audio(self, data):
+        input = data['images']
+        AU = data['au_r']
+        AUC = data['au_c']
+        audio = data['audio']
+
+        audio_feats = []
+        for i in range(len(input)):
+            x = audio[i].to(self.device)
+
+            n, c = x.shape
+            n_s = n % 8
+
+            x = x[n_s:].reshape(-1, 1024)
+
+            n, c = x.shape
+            x = x.reshape(1, n, -1)
+
+            x, ho = self.rnn_aud(x)
+ 
+            reg_token = self.reg_token_aud
+            x_t = torch.cat([reg_token, x], dim=1)
+            x_t = self.transformer_aud(x_t)
+            x = x_t[:, 0]
+            
+            audio_feats.append(x)
+
+
+        audio_feats = torch.cat(audio_feats, dim = 0)
+    
+        # feats = torch.cat([feats, audio_feats], dim=1)
+        preds = self.head(audio_feats)
+
+        return preds
     
     def forward_model(self, data):
         
-        if self.snippet_size > 0:
-            preds = self.forward_model_mask(data)
-        else:
-            preds = self.forward_model_seq(data)
+        # preds = self.forward_model_seq(data)
+        preds = self.forward_model_audio(data)
 
         return preds
     

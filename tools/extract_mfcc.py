@@ -24,9 +24,21 @@ for dt in data_types:
     for wav in tqdm.tqdm(wav_files, desc="extracting mfcc features") :
         input_path = os.path.join(root, "raw", dt, "wav", wav)
         output_path = os.path.join(save_path, wav.replace(".wav", ".npy"))
-        y, sr = librosa.load(input_path)
-        mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
-        np.save(output_path, mfccs)
+        y, sr = librosa.load(input_path, sr=None)
+        # mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=128)
+        audio_mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=128, n_fft=512, hop_length=240, n_mels=40, pad_mode='reflect', htk=True)
+
+        a = audio_mfccs.reshape(-1,)
+        if len(a) <= 40960:
+            b = np.append(a, a)
+            c = np.append(b, b)
+            c = np.append(c, c)
+            audio_mfcc = c[8 * 1024: 40 * 1024]
+        else:
+            audio_mfcc = a[8 * 1024: 40 * 1024]
+        aud = audio_mfcc.reshape(1024, 32)
+        aud = aud.transpose(1, 0)
+        np.save(output_path, aud)
 
     print("finish ALL", dt)
 
