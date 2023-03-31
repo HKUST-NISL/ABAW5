@@ -19,4 +19,7 @@ bash train_feats.sh vamm
 ![alt framework](./figures/frame.png)
 
 ### performance
-![alt performance](./figures/performance.png)
+
+<p align="center">
+<img src="./figures/performance.png" alt="performance" width="300">
+</p>
