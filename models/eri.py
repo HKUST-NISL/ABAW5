@@ -167,42 +167,7 @@ class ERI(LightningModule):
             feats = torch.cat([feats, audio_feats], dim=1)
         if self.mode == 'audio':
             feats = audio_feats
-        preds = self.head(feats)
-        return preds
-
-    def forward_model_audio(self, data):
-        input = data['images']
-        AU = data['au_r']
-        AUC = data['au_c']
-        audio = data['audio']
-
-        audio_feats = []
-        for i in range(len(input)):
-            x = audio[i].to(self.device)
-
-            n, c = x.shape
-            n_s = n % 8
-
-            x = x[n_s:].reshape(-1, 1024)
-
-            n, c = x.shape
-            x = x.reshape(1, n, -1)
-
-            x, ho = self.rnn_aud(x)
- 
-            reg_token = self.reg_token_aud
-            x_t = torch.cat([reg_token, x], dim=1)
-            x_t = self.transformer_aud(x_t)
-            x = x_t[:, 0]
-            
-            audio_feats.append(x)
-
-
-        audio_feats = torch.cat(audio_feats, dim = 0)
-    
-        # feats = torch.cat([feats, audio_feats], dim=1)
-        preds = self.head(audio_feats)
-
+        preds = torch.sigmoid(self.head(feats))
         return preds
     
     def forward_model(self, data):
