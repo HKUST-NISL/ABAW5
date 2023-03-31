@@ -33,7 +33,7 @@ for dt in data_types:
         y, sr = librosa.load(input_path, sr=None)
         # mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=128)
         # hop_l = int(np.ceil(len(y) / nv))
-        audio_mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=128, n_fft=512, hop_length=160, n_mels=40, pad_mode='reflect', htk=True)
+        audio_mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=128, n_fft=512, hop_length=240, n_mels=40, pad_mode='reflect', htk=True)
 
         a = audio_mfccs.reshape(-1,)
         n = a.shape[0]
