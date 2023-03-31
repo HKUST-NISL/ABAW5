@@ -176,6 +176,9 @@ class ABAWDataset(Dataset):
         video_entry = self.video_dict[vid_name]
 
         feat_array = np.load(feat_path)
+
+        # audio_feat_path = audio_feat_path.replace('mfcc', 'mfcc_align')
+        audio_feat_path = audio_feat_path.replace('mfcc', 'mfcc_2')
         aud_array = np.load(audio_feat_path)
 
         data['images'] = torch.from_numpy(feat_array).float()

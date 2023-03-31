@@ -49,6 +49,7 @@ class ERI(LightningModule):
 
             # with au
             feat_ch += 18 + 17
+            # feat_ch += 32
             self.rnn = nn.GRU(feat_ch, hidden_ch, 2, batch_first=True)
 
             # self.pos_embedding = nn.Parameter(torch.zeros(1, self.snippet_size + self.tokens, hidden_ch))
@@ -128,6 +129,7 @@ class ERI(LightningModule):
                 x = input[i].to(self.device)
                 au = AU[i].to(self.device)
                 auc = AUC[i].to(self.device)
+                # aud = audio[i].to(self.device)
 
                 x = torch.cat([x, au, auc], dim=1)
                 n, c = x.shape
